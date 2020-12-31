@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/bfbc1ab4a5.js" crossorigin="anonymous"></script>
+    <link rel="icon" type="images/png" href="images/favicon.png">
+    <link rel="stylesheet" href="style.css">
+    <!--defer : html과 다운로드를 같이 하지만 html 파싱이 끝난 다음 실행-->
+    <script src="main.js" type="text/javascript" defer></script>
+</head>
+
+<body>
+    <!-- NavBar -->
+    <nav id="navbar">
+        <div class="navbar__logo">
+            <i class="far fa-id-card"></i>
+            <a href="#">tuuna</a>
+        </div>
+        <ul class="navbar__menu">
+            <li class="navbar__menu__item active">Home</li>
+            <li class="navbar__menu__item">About</li>
+            <li class="navbar__menu__item">Skills</li>
+            <li class="navbar__menu__item">My work</li>
+            <li class="navbar__menu__item">Testinonial</li>
+            <li class="navbar__menu__item">Contact</li>
+        </ul>
+    </nav>
+
+    <button class="navbar__toggle-btn">
+        <i class="fas fa-bars"></i>
+    </button>
+    <!-- Home -->
+    <section id="home">
+        <img src="images/profile.jpg" alt="tuuna's profile photo" class="home__avatar" />
+        <h1 class="home__title"> Hello, <br> I'm tuuna</h1>
+        <h2 class="home__description">Today, I will eat Jjolmyeon and Kimbap.</h2>
+        <button class="home__contact">Contact Me</button>
+    </section>
+    <!-- About -->
+    <section id="about" class="section section__container">
+        <h1>About me</h1>
+        <p>
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor
+            in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+        </p>
+        <div class="about__majors">
+            <div class="major">
+                <div class="major__icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="major__title">
+                    Back-end
+                </div>
+                <div class="major__description">
+                    nodejs, Flask
+                </div>
+            </div>
+            <div class="major">
+                <div class="major__icon">
+                    <i class="fab fa-js"></i>
+                </div>
+                <div class="major__title">
+                    Front-end
+                </div>
+                <div class="major__description">
+                    Javascript, HTML, CSS
+                </div>
+            </div>
+            <div class="major">
+                <div class="major__icon">
+                    <i class="fab fa-cuttlefish"></i>
+                </div>
+                <div class="major__title">
+                    blah blah - title
+                </div>
+                <div class="major__description">
+                    blah blah - description
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Skills -->
+    <section id="skills" class="section">
+        <div class="section__container">
+            <h1>Skills</h1>
+            <h2>Skills & Attributes</h2>
+            <p>Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia,
+                looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33
+                of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, "Lorem ipsum dolor sit
+                amet..", comes from a line in section 1.10.32.</p>
+            <div class="skillset">
+                <div class="skillset__left">
+                    <h3 class="skillset__title">Skiils</h3>
+                    <div class="skill">
+                        <div class="skill__description">
+                            <span>HTML & CSS</span>
+                            <span>73%</span>
+                        </div>
+                        <div class="skill__bar">
+                            <div class="skill__value" style="width:73%">
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="skill">
+                        <div class="skill__description">
+                            <span>Javascript</span>
+                            <span>82%</span>
+                        </div>
+                        <div class="skill__bar">
+                            <div class="skill__value" style="width:82%">
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="skill">
+                        <div class="skill__description">
+                            <span>C</span>
+                            <span>95%</span>
+                        </div>
+                        <div class="skill__bar">
+                            <div class="skill__value" style="width:95%">
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="skill">
+                        <div class="skill__description">
+                            <span>Python</span>
+                            <span>79%</span>
+                        </div>
+                        <div class="skill__bar">
+                            <div class="skill__value" style="width:79%">
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skillset__right">
+                    <div class="tools">
+                        <h3 class="skillset__title">Tools</h3>
+                        <ul class="tools__list">
+                            <li class="tools__list__item"><span>Visual Studio Code</span></li>
+                            <li class="tools__list__item"><span>...</span></li>
+                        </ul>
+                    </div>
+                    <div class="etc">
+                        <h3 class="skillset__title"></h3>
+                        <ul class="etc__list">
+                            <li class="etc__list__item"><span>Git</span></li>
+                            <li class="etc__list__item"><span>...</span></li>
+
+                        </ul>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- Workd -->
+    <section id="work" class="section">
+        <div class="section__container">
+            <h1>My work</h1>
+            <h3>Projects</h3>
+            <div class="work__categories">
+                <button class="category__btn active">All <span class="category__count">7</span></button>
+                <button class="category__btn">Front-end <span class="category__count">2</span></button>
+                <button class="category__btn">Back-end <span class="category__count">3</span></button>
+                <button class="category__btn">Etc <span class="category__count">2</span></button>
+            </div>
+
+            <div class="work__projects">
+                <a class="project" href="#" target="blank">
+                    <img class="project__img" src="images/profile.jpg" alt="No Image!">
+                    <div class="project__description">
+                        <h3>Youtube Site</h3>
+                        <span>Clone coding with HTML</span>
+                    </div>
+                </a>
+
+                <a class="project" href="#" target="blank">
+                    <img class="project__img" src="images/profile.jpg" alt="No Image!">
+                    <div class="project__description">
+                        <h3>Youtube Site</h3>
+                        <span>Clone coding with HTML</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+    <!-- Testimonials -->
+    <section id="testimonials" class="section">
+        <div class="section__container">
+            <h1>Testimonials</h1>
+            <h3>See what hey say about me</h3>
+            <div class="testimonials">
+                <div class="testimonial">
+                    <img src="images/profile.jpg" alt="No Image!" class="testimonial__avatar">
+                    <div class="testimonial__speech-bubble">
+                        <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type
+                            specimen book.</p>
+                        <p class="name">
+                            <a href="#">tuuna</a> DKU
+                        </p>
+                    </div>
+                </div>
+                <div class="testimonial">
+                    <div class="testimonial__speech-bubble">
+                        <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type
+                            specimen book..</p>
+                        <p class="name">
+                            <a href="#">tuuna</a> DKU
+                        </p>
+                    </div>
+                    <img src="images/profile.jpg" alt="No Image!" class="testimonial__avatar">
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Contact -->
+    <section id="contact" class="section">
+        <div class="section__container">
+            <h1 class="contact__title">Let's talk</h1>
+            <h2 class="contact__email">email@naver.com</h2>
+            <div class="contact__links">
+                <a href="#" target="_blank">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="#" target="_blank">
+                    <i class="fab fa-facebook"></i>
+                </a>
+            </div>
+            <p class="contact__rights">2020 tuuna - All rights reserved</p>
+        </div>
+    </section>
+
+</body>
+
+</html>

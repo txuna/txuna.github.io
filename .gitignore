@@ -1,0 +1,10 @@
+node_modules/
+*.sftp
+*.ftp
+*.sftp
+*.vscode
+vscode
+sftp.json
+ftp.json
+sftp.json
+vscode
