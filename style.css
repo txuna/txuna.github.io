@@ -1,184 +1,242 @@
-    /* Global */
-    
-     :root {
-        /* Color */
-        --color-white: #ffffff;
-        --color-light-white: #eeeeee;
-        --color-dark-white: #bdbdbd;
-        --color-pink: #fe918d;
-        --color-dark-pink: #ff6863;
-        --color-middle-grey: #949292;
-        --color-dark-grey: #4d4d4d;
-        --color-grey: #616161;
-        --color-light-grey: #7c7979;
-        --color-blue: #73aace;
-        --color-yellow: #fff7d1;
-        --color-orange: #feb546;
-        --color-black: #000000;
-        --color-red-wine: #9C344C;
-        --color-pink-white: #FDC5CD;
-        --color-white-red-wine: #F27391;
-        --color-purple: #6757A5;
-        --color-light-purple: #d8d2f0;
-        --color-dark-purple: #4B3A8D;
-        /* Font Size */
-        --font-large: 48px;
-        --font-medium: 28px;
-        --font-regular: 18px;
-        --font-small: 16px;
-        --font-micro: 14px;
-        /* Font weight */
-        --weight-bold: 700;
-        --weight-semi-bold: 600;
-        --weight-regular: 400;
-        /* Size */
-        --size-bolder-radius: 4px;
-        /* Animation */
-        --animation-duration: 300ms;
-    }
-    /*box-sizing은 박스의 크기를 어떤 것을 기준으로 계산할지를 정하는 속성입니다.*/
-    
-    * {
-        box-sizing: border-box;
-    }
-    
-    body {
-        margin: 0;
-        font-family: 'Open Sans', sans-serif;
-        cursor: default;
-    }
-    
-    a {
-        text-decoration: none;
-    }
-    
-    h1 {
-        font-size: var(--font-large);
-        color: var(--color-dark-purple);
-    }
-    
+/* Global */
+
+ :root {
+    /* Color */
+    --color-white: #ffffff;
+    --color-light-white: #eeeeee;
+    --color-dark-white: #bdbdbd;
+    --color-pink: #fe918d;
+    --color-dark-pink: #ff6863;
+    --color-middle-grey: #949292;
+    --color-dark-grey: #4d4d4d;
+    --color-grey: #616161;
+    --color-light-grey: #7c7979;
+    --color-blue: #73aace;
+    --color-yellow: #fff7d1;
+    --color-orange: #feb546;
+    --color-black: #000000;
+    --color-red-wine: #9C344C;
+    --color-pink-white: #FDC5CD;
+    --color-white-red-wine: #F27391;
+    --color-purple: #6757A5;
+    --color-light-purple: #d8d2f0;
+    --color-middle-purple: #4A3E79;
+    --color-dark-purple: #4B3A8D;
+    /* Font Size */
+    --font-large: 48px;
+    --font-medium: 28px;
+    --font-regular: 18px;
+    --font-small: 16px;
+    --font-micro: 14px;
+    /* Font weight */
+    --weight-bold: 700;
+    --weight-semi-bold: 600;
+    --weight-regular: 400;
+    /* Size */
+    --size-bolder-radius: 4px;
+    /* Animation */
+    --animation-duration: 300ms;
+}
+
+
+/*box-sizing은 박스의 크기를 어떤 것을 기준으로 계산할지를 정하는 속성입니다.*/
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    cursor: default;
+}
+
+a {
+    text-decoration: none;
+}
+
+h1 {
+    font-size: var(--font-large);
+    color: var(--color-dark-purple);
+}
+
+.section__container {
+    max-width: 1200px;
+    text-align: center;
+    margin: auto;
+    padding: auto;
+    border-radius: var(--size-bolder-radius);
+    background-color: var(--color-light-purple);
+}
+
+#navbar {
+    display: flex;
+    background-color: var(--color-purple);
+    padding: 10px;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.navbar__logo {
+    padding: 12px;
+}
+
+.navbar__logo a {
+    color: white;
+    font-size: 42px;
+    transition: all var(--animation-duration) ease;
+}
+
+.navbar__logo a:hover::after {
+    opacity: 1;
+    width: 300px;
+}
+
+.navbar__logo a::after {
+    content: '';
+    width: 0px;
+    height: 3px;
+    display: block;
+    position: relative;
+    left: 50%;
+    margin-left: -150px;
+    margin-top: 8px;
+    background-color: var(--color-light-white);
+    opacity: 0;
+    transition: all var(--animation-duration) linear;
+}
+
+.navbar__menu {
+    margin-left: auto;
+    display: flex;
+    padding: 0px;
+}
+
+.navbar__menu__item {
+    list-style-type: none;
+    margin: 8px;
+    padding: 6px;
+    color: var(--color-light-white);
+    font-size: var(--font-regular);
+    transition: all var(--animation-duration) ease;
+    font-size: var(--font-medium);
+}
+
+.navbar__menu__item:hover {
+    background-color: var(--color-light-purple);
+    border-radius: var(--size-bolder-radius);
+    color: var(--color-dark-purple);
+}
+
+.home__detail h2 {
+    font-size: var(--font-medium);
+    color: var(--color-middle-purple);
+    border: solid 5px var(--color-light-white);
+    width: 25%;
+    margin: auto;
+    border-radius: var(--size-bolder-radius);
+    padding: 8px;
+    transition: all var(--animation-duration) linear;
+}
+
+.home__detail h2:hover {
+    width: 50%;
+    background-color: var(--color-purple);
+    color: var(--color-white);
+}
+
+.home__detail h2:hover:after {
+    content: "Contact Me!";
+    display: block;
+}
+
+.home__profile img {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+}
+
+.detail__intro {
+    color: var(--color-dark-grey);
+    font-weight: var(--weight-bold);
+    font-size: var(--font-regular);
+    transition: all var(--animation-duration) linear;
+}
+
+.detail__intro::after {
+    content: '';
+    width: 0px;
+    height: 2px;
+    display: block;
+    position: relative;
+    left: 50%;
+    margin-left: -150px;
+    margin-top: 8px;
+    background-color: var(--color-dark-purple);
+    opacity: 0;
+    transition: all var(--animation-duration) linear;
+}
+
+.detail__intro:hover::after {
+    opacity: 1;
+    width: 300px;
+}
+
+.detail__intro:hover {
+    transform: scale(1.1);
+}
+
+.detail__content {
+    color: var(--color-dark-grey);
+}
+
+blockquote {
+    margin: auto;
+    width: 70%;
+    color: var(--color-light-grey);
+}
+
+blockquote:before {
+    content: open-quote;
+    font-size: var(--font-large);
+    position: relative;
+    left: -50%;
+}
+
+blockquote:after {
+    content: close-quote;
+    font-size: var(--font-large);
+    position: relative;
+    left: 50%;
+}
+
+
+/* Margin 같은 경우 2개를 쓰면 위아래 + 양옆 
+    4개로 쓰게 되면 위 오른쪽 아래쪽 왼쪽(시계방향) 
+*/
+
+@media screen and (max-width: 768px) {
     .section__container {
-        max-width: 1200px;
-        text-align: center;
-        margin: auto;
-        padding: auto;
-        border-radius: var(--size-bolder-radius);
-        background-color: var(--color-light-purple);
+        margin: 12px;
     }
-    
     #navbar {
-        display: flex;
-        background-color: var(--color-purple);
-        padding: 10px;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
+        flex-direction: column;
     }
-    
-    .navbar__logo {
-        padding: 12px;
-    }
-    
-    .navbar__logo a {
-        color: white;
-        font-size: 42px;
-        transition: all var(--animation-duration) ease;
-    }
-    
-    .navbar__logo a:hover {
-        color: var(--color-light-white);
-    }
-    
     .navbar__menu {
-        margin-left: auto;
-        display: flex;
-        padding: 0px;
+        flex-direction: column;
+        margin: 0px;
+        width: 100%;
+        align-items: center;
     }
-    
     .navbar__menu__item {
-        list-style-type: none;
-        margin: 8px;
-        padding: 6px;
-        color: var(--color-light-white);
-        font-size: var(--font-regular);
-        transition: all var(--animation-duration) ease;
-        font-size: var(--font-medium);
+        width: 100%;
+        text-align: center;
     }
-    
-    .navbar__menu__item:hover {
-        background-color: var(--color-light-purple);
-        border-radius: var(--size-bolder-radius);
-        color: var(--color-light-grey);
-    }
-    
     .home__detail h2 {
-        font-size: var(--font-medium);
-        color: var(--color-grey);
-        border: solid 5px var(--color-light-white);
-        width: 30%;
-        margin: auto;
-        border-radius: var(--size-bolder-radius);
-        padding: 8px;
-        transition: all var(--animation-duration) linear;
+        width: 70%;
     }
-    
     .home__detail h2:hover {
-        width: 50%;
-        background-color: var(--color-purple);
-        color: var(--color-white);
+        width: 90%;
     }
-    
-    .home__profile img {
-        width: 250px;
-        height: 250px;
-        border-radius: 50%;
-    }
-    
-    .detail__intro {
-        color: var(--color-dark-grey);
-        font-size: var(--font-regular);
-    }
-    
-    .detail__intro::after {
-        content: '';
-        width: 0px;
-        height: 2px;
-        display: block;
-        position: relative;
-        left: 50%;
-        margin-left: -150px;
-        margin-top: 8px;
-        background-color: var(--color-dark-purple);
-        opacity: 0;
-        transition: all var(--animation-duration) linear;
-    }
-    
-    .detail__intro:hover::after {
-        opacity: 1;
-        width: 300px;
-    }
-    
-    .detail__content {
-        color: var(--color-grey);
-    }
-    /* Typography */
-    /* Margin 같은 경우 2개를 쓰면 위아래 + 양옆 
-       4개로 쓰게 되면 위 오른쪽 아래쪽 왼쪽(시계방향) 
-    */
-    
-    @media screen and (max-width: 768px) {
-        .section__container {
-            margin: 12px;
-        }
-        #navbar {
-            flex-direction: column;
-        }
-        .navbar__menu {
-            flex-direction: column;
-            margin: auto;
-            width: 100%;
-        }
-        .navbar__menu__item:hover {
-            justify-content: center;
-        }
-    }
+}
