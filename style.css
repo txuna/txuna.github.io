@@ -310,6 +310,12 @@ blockquote:after {
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    transition: all var(--animation-duration) linear;
+}
+
+.box:hover {
+    transform: scale(1.2);
+    margin: 12px;
 }
 
 .box .percent {
