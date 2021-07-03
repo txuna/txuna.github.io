@@ -310,7 +310,6 @@ blockquote:after {
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    box-shadow: 0 30px 60px rgba(0, 0, 0, .2);
 }
 
 .box .percent {
@@ -342,8 +341,8 @@ blockquote:after {
 }
 
 .box .percent svg circle:nth-child(2) {
-    stroke-dashoffset: calc(440 - (440 * 87) / 100);
-    stroke: #03a9f4;
+    transition: stroke-dashoffset 1s linear;
+    stroke: #68BC7B;
 }
 
 .box .percent .number {
