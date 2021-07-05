@@ -8,8 +8,6 @@ function open_menu(event) {
     } else {
         NavbarMenu.style.display = "inherit"
     }
-
-
 }
 
 function init() {

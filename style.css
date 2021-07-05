@@ -584,4 +584,10 @@ blockquote:after {
     .record__item p {
         font-size: 14px;
     }
+    .navbar__logo a {
+        font-size: 32px;
+    }
+    .navbar__bar {
+        font-size: 32px;
+    }
 }
