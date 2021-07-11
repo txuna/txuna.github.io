@@ -12,7 +12,6 @@ function open_menu(event) {
 
 function init() {
     MenuBarBtn.addEventListener("click", open_menu);
-
 }
 
 init()
