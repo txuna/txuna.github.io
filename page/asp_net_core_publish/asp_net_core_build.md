@@ -177,11 +177,11 @@ docker run -it -p 5000:80 --name [컨테이너 이름] [이미지 이름]
 
 그렇다면 아래와 같이 3개의 도커가 실행되게 된다. 
 
-![Untitled](./asp_net_core_build_image//Untitled.png)
+![Untitled](./page/asp_net_core_publish/asp_net_core_build_image/Untitled.png)
 
 Postman이나 자신이 만든 클라이언트로 실행을 해보면 잘 될것이다. 
 
-![Untitled](./asp_net_core_build_image/Untitled%201.png)
+![Untitled](./page/asp_net_core_publish/asp_net_core_build_image/Untitled%201.png)
 
 ### 트러블 슈팅
 
