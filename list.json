@@ -26,7 +26,7 @@
         },
         {
             "title" : "Redis에서 Lua Script를 사용하여 Atomic하게 접근하기",
-            "link" : "./page/redis/lua_script/RedisLuaScript.md",
+            "link" : "./page/redis_lua_script/RedisLuaScript.md",
             "date" : "2023.06.09",
             "category" : "Redis"
         },
