@@ -1,329 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/bfbc1ab4a5.js" crossorigin="anonymous"></script>
-    <link rel="icon" type="images/png" href="images/favicon.png">
     <link rel="stylesheet" href="style.css">
     <!--defer : html과 다운로드를 같이 하지만 html 파싱이 끝난 다음 실행-->
     <script src="main.js" type="text/javascript" defer></script>
-
+    <title>Document</title>
 </head>
-
 <body>
-    <nav id="navbar">
-        <div class="navbar__logo">
-            <a href="#">Tuuna's Portfolio</a>
+    <section id="navbar">
+        <div>
+            <a href="/index.html">Tuuna Tech Blog</a>
         </div>
-        <button class="navbar__bar">
-            <i class="fas fa-bars"></i>
-        </button>
-        <ul class="navbar__menu">
-            <li class="navbar__menu__item"><a href="#home">Home</a></li>
-            <li class="navbar__menu__item"><a href="#career">Career</a></li>
-            <li class="navbar__menu__item"><a href="#project">Project</a></li>
+        <ul>
+            <li><a href="#">Contens</a></li>
+            <li><a href="#">Search</a></li>
+            <li><a href="#">About</a></li>
         </ul>
-
-    </nav>
-    <section id="home" class="section__container">
-        <div class="home__title">
-            <h1>Hello Tuuna</h1>
-        </div>
-        <div class="home__profile">
-            <img src="/images/profile.jpg" />
-        </div>
-        <div class="home__detail">
-            <h2>김수창/tuuna
-            </h2>
-            <p class="detail__intro">인공지능빼고 다 하는 사람이 되는 그날까지...★</p>
-            <blockquote>
-                <p class="detail__content">주로 사용하는 언어는 C, Javascript, Python, Golang입니다.<br> 관심분야는 게임(기획 및 제작 + 게임서버)개발에 관심을 가지고 있습니다. <br> 그리고 HTML, CSS, Javascript를 사용하여 필요로 하는 소규모 웹사이트 제작 및 웹서버 제작도 진행하고있습니다.<br></p>
-
-            </blockquote>
-        </div>
     </section>
-
-    <section id="career" class="section__container">
-        <div class="career__title">
-            <h1>Career</h1>
+    <section id="main">
+    <!--
+        <div>
+            <a href="#">컴퓨터 구조 파악하기</a>
+            <div>
+                <p>Linux Kernel</p>
+                <p>2023.12.11</p>
+            </div>
         </div>
-        <div class="career__container">
-            <div class="record">
-                <h2>Record</h2>
-                <div class="record__container">
-                    <div class="record__item">
-                        <i class="fas fa-graduation-cap"></i>
-                        <p>DanKook.Univ 2018.03 ~ </p>
-                    </div>
-                    <div class="record__item">
-                        <i class="fas fa-award"></i>
-                        <p>2018 성균관대학교 창의적 종합설계 경진대회 (장려상)</p>
-                    </div>
-                    <div class="record__item">
-                        <i class="fas fa-award"></i>
-                        <p>2018 창의적 종합설계 경진대회 (특별상)</p>
-                    </div>
-                    <div class="record__item">
-                        <i class="fas fa-award"></i>
-                        <p>2018 단국대학교 캡스톤디자인(금상)</p>
-                    </div>
-                    <div class="record__item">
-                        <i class="fas fa-graduation-cap"></i>
-                        <p>Best of the Best 2019.07 ~ 2020.03</p>
-                    </div>
-                </div>
-            </div>
-            <div class="career__line">
-
-            </div>
-            <div class="field">
-                <h2>Knowledge</h2>
-                <div class="field__container">
-                    <div class="box__container">
-                        <div class="box">
-                            <div class="percent">
-                                <svg>
-                                    <circle cx="70" cy="70" r="70"></circle>
-                                    <circle class="value1" cx="70" cy="70" r="70" 
-                                    style="stroke-dashoffset: calc(440 - (440 * 75) / 100);">
-                                </circle>
-                                </svg>
-                                <div class="number">
-                                    <h2>75<span>%</span></h2>
-                                </div>
-                            </div>
-                            <h2 class="text">C/Python/Go</h2>
-                        </div>
-                    </div>
-
-
-                    <div class="box__container">
-                        <div class="box">
-                            <div class="percent">
-                                <svg>
-                                    <circle cx="70" cy="70" r="70"></circle>
-                                    <circle class="value" cx="70" cy="70" r="70"
-                                    style="stroke-dashoffset: calc(440 - (440 * 42) / 100);"></circle>
-                                </svg>
-                                <div class="number">
-                                    <h2>42<span>%</span></h2>
-                                </div>
-                            </div>
-                            <h2 class="text">Frontend</h2>
-                        </div>
-                    </div>
-
-
-                    <div class="box__container">
-                        <div class="box">
-                            <div class="percent">
-                                <svg>
-                                    <circle cx="70" cy="70" r="70"></circle>
-                                    <circle class="value" cx="70" cy="70" r="70"
-                                    style="stroke-dashoffset: calc(440 - (440 * 48) / 100);"></circle>
-                                </svg>
-                                <div class="number">
-                                    <h2>48<span>%</span></h2>
-                                </div>
-                            </div>
-                            <h2 class="text">Web Server</h2>
-                        </div>
-                    </div>
-
-
-
-                    <div class="box__container">
-                        <div class="box">
-                            <div class="percent">
-                                <svg>
-                                    <circle cx="70" cy="70" r="70"></circle>
-                                    <circle class="value" cx="70" cy="70" r="70"
-                                    style="stroke-dashoffset: calc(440 - (440 * 55) / 100);"></circle>
-                                </svg>
-                                <div class="number">
-                                    <h2>55<span>%</span></h2>
-                                </div>
-                            </div>
-                            <h2 class="text">Game Server</h2>
-                        </div>
-                    </div>
-
-                    <div class="box__container">
-                        <div class="box">
-                            <div class="percent">
-                                <svg>
-                                    <circle cx="70" cy="70" r="70"></circle>
-                                    <circle class="value" cx="70" cy="70" r="70"
-                                    style="stroke-dashoffset: calc(440 - (440 * 60) / 100);"></circle>
-                                </svg>
-                                <div class="number">
-                                    <h2>60<span>%</span></h2>
-                                </div>
-                            </div>
-                            <h2 class="text">Game Client</h2>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
+    -->
     </section>
+    <section id="foot">
 
-    <section id="project" class="section__container">
-        <div class="project__title">
-            <h1>Project</h1>
-        </div>
-        <div class="project__list">
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>네모의 모험</span>
-                        <p>2D 플랫포머형식의 RPG게임</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>네모라는 주인공이 섬을 빠져나가 자유를 쟁취하기 위한 과정을 RPG형태로 만들어낸 게임입니다.</p>
-                        <span>[Tech]</span>
-                        <p>Godot, Aesprite</p>
-                        <a href="https://github.com/txuna/NemoMohum">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>Dwell Time Extension</span>
-                        <p>검색엔진 검색시 사이트를 추천해주는 확장프로그램</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>사용자가 검색사이트에 검색어를 입력할시 퀄리티가 좋고 검색어와 연관된 사이트를 추천해주는 크롬 확장 프로그램입니다.</p>
-                        <span>[Tech]</span>
-                        <p>HTML, CSS, Js, Mysql</p>
-                        <a href="https://github.com/MortysClone/dwellExtension">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>ELF 디버거</span>
-                        <p>ELF파일 포맷 디스어셈블과 동적 디버깅을 실행하는 툴</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>32bit ELF를 디스어셈블 및 ptrace를 활용하여 동적으로 디버깅할 수 있는 툴 입니다.</p>
-                        <span>[Tech]</span>
-                        <p>C Language</p>
-                        <a href="https://github.com/txuna/Debugger">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>한글 점자 프린터</span>
-                        <p>한글문서를 점자형태로 출력하는 프린터</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>한글 문서를 점자형태로 출력하는 프린터입니다. 한글을 점자로 변환하는 로직을 개발하였습니다. </p>
-                        <span>[Tech]</span>
-                        <p>Python</p>
-                        <a href="https://github.com/SYR-Aegis/braile_printer_v2">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>라따뚜이</span>
-                        <p>머신러닝기반 스마트폰으로 식재료를 찍어 레시피를 추천받는 어플리케이션</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>어플리케션형태로 식자재를 찍으면 레시피를 추천받습니다. 이때 어플리케이션의 UI와 서버부분을 담당하였습니다.</p>
-                        <span>[Tech]</span>
-                        <p>Python[Flask], Xamarin]</p>
-                        <a href="https://github.com/SYR-Aegis/Ratatouille">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>tuMarkup</span>
-                        <p>새로운 형식의 마크업문법을 제작하여 html코드로 변환해주는 사이트</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>flex와 bison을 이용하여 새로운 마크업을 정의하고 웹사이트에 입력하면 html코드로 변환해주는 사이트입니다.</p>
-                        <span>[Tech]</span>
-                        <p>C[Onion] Flex, Bison</p>
-                        <a href="https://github.com/MortysClone/MortyMarkup">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>명령어 게임</span>
-                        <p>리눅스를 어려워 하는 유저를 위해 리눅스 명령어기반 간단한 게임</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>리눅스의 명령어를 각종 퀘스트와 이벤트로 배우면서 즐기는 리눅스 명령어 게임입니다. 여기서 게임의 내부 로직을 담당했습니다.</p>
-                        <span>[Tech]</span>
-                        <p>Python</p>
-                        <a href="https://github.com/C0mmm4nd3r/CommandGame">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flip-card">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span>상점 운영게임</span>
-                        <p>고객들의 니즈를 분석하여 상품을 주문하고 배치하여 판매하는 게임</p>
-                    </div>
-                    <div class="flip-card-back">
-                        <span>[Description]</span>
-                        <p>점포를 낼 곳의 위치분석과 고객마다의 성향을 파악하여 상품을 배치하고 전략적으로 판매하는 편의점게임입니다. </p>
-                        <span>[Tech]</span>
-                        <p>Godot, Krita</p>
-                        <a href="https://github.com/txuna/StoreGame">
-                            <i class="fab fa-github"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-        </div>
     </section>
 </body>
-
 </html>

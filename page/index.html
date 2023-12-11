@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1 id="epoll-">EPOLL은 어떻게 동작하는가</h1>
+<h3 id="-">개론</h3>
+<p>하나의 프로세스 또는 스레드에서 여러개의 소켓을 모니터링하기 위해 리눅스는 EPOLL 인터페이스를 제공합니다. EPOLL을 통해 모니터링하는 소켓에 데이터가 왔거나 데이터를 쓸 수 있는 상태가 되면 사용자에게 알려줍니다.
+epoll이 어떤식으로 동작하는지 구글링을 통해 많은 양의 정보를 얻을 수 있으며 직감적으로 동작방식을 알 수 있습니다. 하지만 직접 커널 소스코드를 보면서 세부적으로 이해하는 것도 좋은 방법이라고 생각하기에 글을 쓰게 되었습니다.</p>
+<h3 id="-">주의</h3>
+<p>본 내용은 리눅스 커널 6.4.3 버전을 기준으로 하며 많은 양의 소스코드가 존재하여 분석에 있어 틀린 내용이 있을 수 있습니다.<br>그렇기에 <strong><em>재미로만 봐주시면 감사하겠습니다.</em></strong></p>
+<h3 id="-">본론</h3>
+<p>리눅스에서 제공하는 epoll 인터페이스를 사용하기 위해서는 3가지의 syscall이 존재합니다.   </p>
+<ol>
+<li>epoll_create </li>
+<li>epoll_ctl </li>
+<li>epoll_wait </li>
+</ol>
+<p>epoll_create함수는 epoll instance를 생성하며 epoll_ctl은 생성한 epoll instance에 모니터링하기를 원하는 파일디스크립터를 삽입합니다. 마지막으로 epoll_wait은 호출한 프로세스가 대기모드에 진입하여 관심 파일디스크립터의 알림을 대기합니다. 또한 타임아웃을 지정하여 대기모드에서 실행모드로 돌아올 수 있습니다.<br>그렇다면 이러한 syscall들의 내부 구조는 어떨까 epoll_create() 함수부터 알아보도록 하겠습니다. </p>
+<h3 id="epoll_create">epoll_create</h3>
+<p>epoll_create함수를 호출하면 내부적으로 do_epoll_create함수를 호출하게 됩니다.</p>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c  */</span>
+SYSCALL_DEFINE1(epoll_create, <span class="hljs-keyword">int</span>, <span class="hljs-built_in">size</span>)
+{
+    <span class="hljs-built_in">if</span> (<span class="hljs-built_in">size</span> &lt;= <span class="hljs-number">0</span>)
+        <span class="hljs-built_in">return</span> -EINVAL;
+
+    <span class="hljs-built_in">return</span> do_epoll_create(<span class="hljs-number">0</span>);
+}
+</code></pre>
+<p>여기서 알 수 있듯이 size값은 무시됩니다.     </p>
+<p><strong><em>지금부터 나오는 함수들은 크기가 크기 때문에 일부분만 발췌하겠습니다</em></strong></p>
+<p>do_epoll_create함수를 살펴보도록 하겠습니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> do_epoll_create(<span class="hljs-keyword">int</span> flags)
+{
+    <span class="hljs-keyword">int</span> error, fd;
+    struct eventpoll *ep = <span class="hljs-keyword">NULL</span>;
+    struct <span class="hljs-keyword">file</span> *<span class="hljs-keyword">file</span>;
+[...]
+    error = ep_alloc(&amp;ep);
+[...]
+    fd = get_unused_fd_flags(O_RDWR | (flags &amp; O_CLOEXEC));
+[...]
+    <span class="hljs-keyword">file</span> = anon_inode_getfile(<span class="hljs-string">"[eventpoll]"</span>, &amp;eventpoll_fops, ep,
+                 O_RDWR | (flags &amp; O_CLOEXEC));
+[...]
+    ep-&gt;<span class="hljs-keyword">file</span> = <span class="hljs-keyword">file</span>;
+    fd_install(fd, <span class="hljs-keyword">file</span>);
+    <span class="hljs-keyword">return</span> fd;
+}
+</code></pre>
+<p>예외처리 로직등 설명에 필요없는 부분은 날리고 핵심적인 부분만 캐치했습니다.<br>먼저 <code>ep_alloc</code> 함수를 호출해서 <code>struct eventpoll</code>구조체를 할당합니다. 그리고 <code>get_unused_fd_flags</code>함수를 호출하여 현재 프로세스의 파일목록중 사용하지않는 파일 디스크립터를 할당하고 반환합니다.  </p>
+<p><code>anon_inode_getfile</code>함수를 호출하여 &quot;[eventpoll]&quot;파일에 대한 <code>struct file</code>을 만들고 <code>file</code> 구조체의 <code>f_op</code> 멤버변수에 <code>eventpoll_fops</code>를 할당합니다. 그리고 <code>file</code> 구조체의 <code>private_data</code>로 <code>struct eventpoll *ep</code>를 대입하여 저장합니다.  최종적으로 할당한 fd_install함수를 호출하여 현재 프로세스 파일 목록에 대입하고 파일 디스크립터를 반환합니다.</p>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c */</span>
+<span class="hljs-keyword">static</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">struct</span> file_operations eventpoll_fops = {
+<span class="hljs-meta">#<span class="hljs-meta-keyword">ifdef</span> CONFIG_PROC_FS</span>
+    .show_fdinfo    = ep_show_fdinfo,
+<span class="hljs-meta">#<span class="hljs-meta-keyword">endif</span></span>
+    .<span class="hljs-built_in">release</span>    = ep_eventpoll_release,
+    .poll        = ep_eventpoll_poll,
+    .llseek        = noop_llseek,
+};
+</code></pre>
+<p>ep의 file멤버에 file 구조체를 등록하고 fd_install함수를 호출하여 fd와 file을 현재 프로세스의 파일목록에 등록합니다. 그리고 최종적으로 epoll instance의 FD를 반환합니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> ep_alloc(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> **pep)
+{
+    <span class="hljs-keyword">int</span> error;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">user_struct</span></span> *user;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep;
+[...]
+    ep = kzalloc(<span class="hljs-keyword">sizeof</span>(*ep), GFP_KERNEL);
+[...]
+    mutex_init(&amp;ep-&gt;mtx);
+    rwlock_init(&amp;ep-&gt;lock);
+    init_waitqueue_head(&amp;ep-&gt;wq);
+    init_waitqueue_head(&amp;ep-&gt;poll_wait);
+    INIT_LIST_HEAD(&amp;ep-&gt;rdllist);
+    ep-&gt;rbr = RB_ROOT_CACHED;
+    ep-&gt;ovflist = EP_UNACTIVE_PTR;
+    ep-&gt;user = user;
+    refcount_set(&amp;ep-&gt;refcount, <span class="hljs-number">1</span>);
+
+    *pep = ep;
+
+    <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+[...]
+}
+</code></pre>
+<p><code>ep_alloc</code>함수는 <code>struct eventpoll</code>구조체 할당을 진행하고 각 종 값을 초기화 합니다. 
+<code>eventpoll</code>의 중요한 항목중 <code>mtx</code>는 다중 프로세스가 동일한 <code>epoll instance</code>에 접근할 수 있도록 락, 언락의 역할을 진행합니다. <code>wq</code> 멤버는 <code>epoll_wait</code>함수를 호출한 프로세스의 <code>struct wait_queue_t wait</code>을 즉, 태스크를 담기위한 연결리스트입니다. 후술할 예정이지만 미리 말하자면 <code>epoll_wait</code>함수를 호출하면 대기모드에 빠지게 되는데 <code>epoll instance</code>가 관리하는 파일디스크립터에 이벤트가 발생하게 되면 <code>ep_poll_callback</code>함수를 호출하여 <code>wakeup</code>하게 됩니다.  </p>
+<p>그리고 <code>poll_wait</code>필드는 모니터링 대상이 다른 epoll instance의 경우 그의 wait queue로서 동작합니다. 그리고 <code>rbr</code>필드는 모니터링 원하는 파일디스크립터 항목들을(epitem)을 <code>RB Tree</code>형태로 관리합니다. 마지막으로 <code>rdllist</code>필드는 이벤트가 발생한 파일디스크립터가 담긴 연결리스트입니다.   </p>
+<h3 id="epoll_ctl">epoll_ctl</h3>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c */</span>
+SYSCALL_DEFINE4(epoll_ctl, <span class="hljs-keyword">int</span>, epfd, <span class="hljs-keyword">int</span>, op, <span class="hljs-keyword">int</span>, fd,
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *, event)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> epds;
+
+    <span class="hljs-keyword">if</span> (ep_op_has_event(op) &amp;&amp;
+        copy_from_user(&amp;epds, event, <span class="hljs-keyword">sizeof</span>(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span>)))
+        <span class="hljs-keyword">return</span> -EFAULT;
+
+    <span class="hljs-keyword">return</span> do_epoll_ctl(epfd, op, fd, &amp;epds, <span class="hljs-literal">false</span>);
+}
+</code></pre>
+<p>epoll_ctl함수를 호출하면 유저가 전달한 인수를 <code>copy_from_user</code>함수를 호출하여 커널공간에 선언된 <code>epds</code>변수에 값을 복사합니다. 그리고 <code>do_epoll_ctl</code>함수를 호출하여 동작을 이어나갑니다.<br>do_epoll_ctl함수는 3가지의 기능으로 분리가 됩니다.<br>값 검증 및 세팅, 폐쇄루프 검증, 본연의 목적인 추가, 수정, 삭제 기능 수행으로 나눠집니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">int</span> do_epoll_ctl(<span class="hljs-keyword">int</span> epfd, <span class="hljs-keyword">int</span> op, <span class="hljs-keyword">int</span> fd, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> *epds,
+         <span class="hljs-keyword">bool</span> nonblock)
+{
+    <span class="hljs-keyword">int</span> error;
+    <span class="hljs-keyword">int</span> full_check = <span class="hljs-number">0</span>;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">fd</span></span> f, tf;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span></span> *epi;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *tep = NULL;
+</code></pre>
+<pre><code class="lang-C">    <span class="hljs-keyword">error</span> = -EBADF;
+    f = fdget(epfd);
+    <span class="hljs-keyword">if</span> (!f.<span class="hljs-keyword">file</span>)
+        goto error_return;
+
+    tf = fdget(fd);
+    <span class="hljs-keyword">if</span> (!tf.<span class="hljs-keyword">file</span>)
+        goto error_fput;
+
+    <span class="hljs-keyword">error</span> = -EPERM;
+    <span class="hljs-keyword">if</span> (!file_can_poll(tf.<span class="hljs-keyword">file</span>))
+        goto error_tgt_fput;
+
+    <span class="hljs-keyword">error</span> = -EINVAL;
+    <span class="hljs-keyword">if</span> (f.<span class="hljs-keyword">file</span> == tf.<span class="hljs-keyword">file</span> || !is_file_epoll(f.<span class="hljs-keyword">file</span>))
+        goto error_tgt_fput;
+
+    <span class="hljs-keyword">if</span> (ep_op_has_event(op) &amp;&amp; (epds-&gt;events &amp; EPOLLEXCLUSIVE)) {
+        <span class="hljs-keyword">if</span> (op == EPOLL_CTL_MOD)
+            goto error_tgt_fput;
+        <span class="hljs-keyword">if</span> (op == EPOLL_CTL_ADD &amp;&amp; (is_file_epoll(tf.<span class="hljs-keyword">file</span>) ||
+                (epds-&gt;events &amp; ~EPOLLEXCLUSIVE_OK_BITS)))
+            goto error_tgt_fput;
+    }
+</code></pre>
+<p>먼저 인자로 주어진 <code>epoll instance</code> 파일디스크립터와 모니터링하기를 원하는 파일디스크립터를 <code>fdget</code>함수를 히용하여 <code>struct fd</code>구조체를 가지고옵니다.  </p>
+<p>그리고 모니터링하기를 원하는 fd 구조체의 file멤버가 polling가능한지 확인한합니다. 이때 polling가능한지 확인하기 위해서는 단순히 file 구조체의 poll 멤버필드가 NULL인지 아닌지 검사합니다. 그리고 <code>epoll instance</code>가 정말 epoll instance가 맞는지 확인하기 위해 <code>is_file_epoll</code>함수를 호출합니다. 이 또한, 이전에 설정했던 <code>eventpoll_fops</code>의 주소값과 같은지 확인합니다.  </p>
+<p>그리고 만약 사용자가 <code>EPOLLEXCLUSIVE</code> 이벤트를 추가했다면 이는 <code>EPOLL_CTL_ADD</code>에서만 설정이 가능하기 때문에 추가나 삭제에 사용했는지 검증합니다.</p>
+<pre><code class="lang-C"><span class="hljs-attribute">ep</span> = f.file-&gt;private_data<span class="hljs-comment">;</span>
+</code></pre>
+<p>그리고 epoll fd를 통해서 얻어낸 <code>struct fd</code>구조체의 file 구조체의 private_data에는 이전에 <code>do_epoll_create</code>에서 할당한 <code>struct eventpoll</code>구조체 즉, epoll <code>instance</code>가 존재하기 때문에 이것을 가지고 옵니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">error</span> = epoll_mutex_lock(&amp;ep-&gt;mtx, 0, nonblock);
+<span class="hljs-keyword">if</span> (<span class="hljs-keyword">error</span>)
+    goto error_tgt_fput;
+<span class="hljs-keyword">if</span> (op == EPOLL_CTL_ADD) {
+    <span class="hljs-keyword">if</span> (READ_ONCE(f.<span class="hljs-keyword">file</span>-&gt;f_ep) || ep-&gt;<span class="hljs-keyword">gen</span> == loop_check_gen ||
+        is_file_epoll(tf.<span class="hljs-keyword">file</span>)) {
+        mutex_unlock(&amp;ep-&gt;mtx);
+        <span class="hljs-keyword">error</span> = epoll_mutex_lock(&amp;epnested_mutex, 0, nonblock);
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">error</span>)
+            goto error_tgt_fput;
+        loop_check_gen++;
+        full_check = 1;
+        <span class="hljs-keyword">if</span> (is_file_epoll(tf.<span class="hljs-keyword">file</span>)) {
+            tep = tf.<span class="hljs-keyword">file</span>-&gt;private_data;
+            <span class="hljs-keyword">error</span> = -ELOOP;
+            <span class="hljs-keyword">if</span> (ep_loop_check(ep, tep) != 0)
+                goto error_tgt_fput;
+        }
+        <span class="hljs-keyword">error</span> = epoll_mutex_lock(&amp;ep-&gt;mtx, 0, nonblock);
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">error</span>)
+            goto error_tgt_fput;
+    }
+}
+</code></pre>
+<p>다음은 <code>epoll instance</code>의 모니터링 파일디스크립터가 또 다른 <code>epoll instance</code>일 경우 closed loop에 빠질 수 있습니다. 그렇기에 여기서 루프의 검증을 진행합니다. </p>
+<pre><code class="lang-C"><span class="hljs-attribute">epi</span> = ep_find(ep, tf.file, fd);
+</code></pre>
+<p><code>ep_find</code>함수를 호출하여 모니터링 원하는 파일디스크립터가 이미 <code>struct epitem</code>구조체를 가지고 있는지 레드블랙 트리에서 검색을 진행합니다. 만약 해당 값이 NULL이 아니라면 이미 이전에 등록했음을 의미합니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">error</span> = -EINVAL;
+<span class="hljs-keyword">switch</span> (op) {
+<span class="hljs-keyword">case</span> EPOLL_CTL_ADD:
+    <span class="hljs-keyword">if</span> (!epi) {
+        epds-&gt;events |= EPOLLERR | EPOLLHUP;
+        <span class="hljs-keyword">error</span> = ep_insert(ep, epds, tf.file, fd, full_check);
+    } <span class="hljs-keyword">else</span>
+        <span class="hljs-keyword">error</span> = -EEXIST;
+    <span class="hljs-keyword">break</span>;
+<span class="hljs-keyword">case</span> EPOLL_CTL_DEL:
+    <span class="hljs-keyword">if</span> (epi) {
+        ep_remove_safe(ep, epi);
+        <span class="hljs-keyword">error</span> = <span class="hljs-number">0</span>;
+    } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">error</span> = -ENOENT;
+    }
+    <span class="hljs-keyword">break</span>;
+<span class="hljs-keyword">case</span> EPOLL_CTL_MOD:
+    <span class="hljs-keyword">if</span> (epi) {
+        <span class="hljs-keyword">if</span> (!(epi-&gt;event.events &amp; EPOLLEXCLUSIVE)) {
+            epds-&gt;events |= EPOLLERR | EPOLLHUP;
+            <span class="hljs-keyword">error</span> = ep_modify(ep, epi, epds);
+        }
+    } <span class="hljs-keyword">else</span>
+        <span class="hljs-keyword">error</span> = -ENOENT;
+    <span class="hljs-keyword">break</span>;
+}
+mutex_unlock(&amp;ep-&gt;mtx);
+
+<span class="hljs-keyword">return</span> <span class="hljs-keyword">error</span>;
+</code></pre>
+<p>사용자가 설정한 플래그 값 <code>EPOLL_CTL_ADD</code>, <code>EPOLL_CTL_MOD</code>, <code>EPOLL_CTL_DEL</code>에 따라 기능을 수행합니다. 딥하게 알아볼 부분은 <code>EPOLL_CTL_ADD</code>부분입니다.<br>먼저 이전에 사용자가 추가한 epitem이 있다면 오류를 반환하고 없다면 <code>EPOLLERR</code>이벤트와 <code>EPOLLHUP</code>이벤트를 기존 이벤트가 추가합니다. 여기서 알 수 있듯이 커널에서 자동으로 위 이벤트를 추가해줍니다. 그리고 <code>ep_insert</code>함수를 호출하여 <code>epoll instance</code>에 모니터링 하기를 원하는 파일디스크립터를 추가합니다.  </p>
+<p><code>ep_insert</code>함수의 분량 또한 방대하기 때문에 핵심적인 요소만 남겨두고 나머지는 쳐냈습니다.<br><code>ep_insert</code>함수는 크게 3가지의 기능을 수행합니다. </p>
+<ol>
+<li><code>epoll instance</code>의 파일디스크립터 관리하는 RB Tree에 모니터링하고자하는 파일디스크립터 삽입 </li>
+<li>모니터링하고자하는 (tcp socket의 예로)소켓의 wait queue에 해당 태스크(wait) 후킹(삽입)</li>
+<li>epoll_wait 호출전 이미 이벤트가 있는지 확인</li>
+</ol>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c */</span>
+<span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> ep_insert(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep, <span class="hljs-keyword">const</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> *event,
+             <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span></span> *tfile, <span class="hljs-keyword">int</span> fd, <span class="hljs-keyword">int</span> full_check)
+{
+    <span class="hljs-keyword">int</span> error, pwake = <span class="hljs-number">0</span>;
+    __poll_t revents;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span></span> *epi;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ep_pqueue</span></span> epq;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *tep = NULL;
+[...]
+    epi = kmem_cache_zalloc(epi_cache, GFP_KERNEL)
+
+    INIT_LIST_HEAD(&amp;epi-&gt;rdllink);
+    epi-&gt;ep = ep;
+    ep_set_ffd(&amp;epi-&gt;ffd, tfile, fd);
+    epi-&gt;event = *event;
+    epi-&gt;next = EP_UNACTIVE_PTR;
+[...]
+    ep_rbtree_insert(ep, epi);
+[...]
+</code></pre>
+<p><code>epoll instance</code>에서 모니터링하고자하는 파일디스크립터를 관리하고자할 때 사용하는 자료구조르는 앞서 언급했듯이 Red Black Tree를 사용합니다. 그렇기에 파일디스크립터 이벤트, <code>epoll instance</code>등의 정보가 포함된 <code>struct epitem</code>구조체를 할당하고 초기화합니다. <code>struct epitem</code>구조체 또한 크기가 크기 때문에 모든 내용을 넣을 수 없어 위에서 나온 필드만 소개하고자 합니다.   </p>
+<pre><code class="lang-C"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span> {</span>
+    <span class="hljs-class"><span class="hljs-keyword">union</span> {</span>
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">rb_node</span> <span class="hljs-title">rbn</span>;</span>
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">rcu_head</span> <span class="hljs-title">rcu</span>;</span>
+    };
+
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">list_head</span> <span class="hljs-title">rdllink</span>;</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_filefd</span> <span class="hljs-title">ffd</span>;</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eppoll_entry</span> *<span class="hljs-title">pwqlist</span>;</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span> *<span class="hljs-title">ep</span>;</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span> <span class="hljs-title">event</span>;</span>
+};
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_filefd</span> {</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span> *<span class="hljs-title">file</span>;</span>
+    int fd;
+} __packed;
+
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eppoll_entry</span> {</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eppoll_entry</span> *<span class="hljs-title">next</span>;</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span> *<span class="hljs-title">base</span>;</span>
+    wait_queue_entry_t wait;
+    wait_queue_head_t *whead;
+};
+
+<span class="hljs-regexp">/* Wrapper struct used by poll queueing */</span>
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ep_pqueue</span> {</span>
+    poll_table pt;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span> *<span class="hljs-title">epi</span>;</span>
+};
+</code></pre>
+<ol>
+<li><code>rbn</code> 필드를 통해서 레드블랙트리를 연결합니다.   </li>
+<li><code>ffd</code> 필드를 통해서 파일디스크립터와 파일구조체를 저장합니다.</li>
+<li><code>ep</code> 필드를 통해서 <code>epoll instance</code> 즉, <code>struct eventpoll</code>을 가리킵니다. </li>
+<li><code>event</code> 필드를 통해서 유저가 인수로 전달한 <code>struct epoll_event</code>를 저장합니다.</li>
+<li><code>rdllink</code> 필드를 통해서 <code>struct eventpoll</code>의 <code>rdllist</code>필드와 연결합니다. 즉, 활성화된 이벤트가 있는경우 연결되는 항목입니다.</li>
+</ol>
+<pre><code class="lang-C"><span class="hljs-comment">/* ep_insert 함수 이어서 */</span>
+epq.epi = epi<span class="hljs-comment">;</span>
+init_poll_funcptr(&amp;epq.pt, ep_ptable_queue_proc)<span class="hljs-comment">;</span>
+
+revents = ep_item_poll(epi, &amp;epq.pt, <span class="hljs-number">1</span>)<span class="hljs-comment">;</span>
+</code></pre>
+<p><code>struct ep_pqueue</code>의 <code>epi</code>필드에 파일디스크립터의 <code>epitem</code>을 대입한다. 그리고 <code>init_poll_funcptr</code>함수를 호출하여 <code>poll_table pt</code>의 <code>_qproc</code>필드에 <code>ep_ptable_queue_proc</code>함수를 대입합니다.<br>해당 내용은 아래에 정의 되어있습니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">typedef</span> <span class="hljs-keyword">struct</span> poll_table_struct {
+    poll_queue_proc _qproc;
+    <span class="hljs-keyword">__poll_t</span> _key;
+} poll_table;
+
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-keyword">void</span> <span class="hljs-title">init_poll_funcptr</span><span class="hljs-params">(poll_table *pt, poll_queue_proc qproc)</span>
+</span>{
+    pt-&gt;_qproc = qproc;
+    pt-&gt;_key   = ~(<span class="hljs-keyword">__poll_t</span>)<span class="hljs-number">0</span>; <span class="hljs-comment">/* all events enabled */</span>
+}
+</code></pre>
+<p>해당 함수포인터는 추후 모니터링하기를 원하는 소켓의 wait queue에 wait을 넣기 위해 호출하는 함수입니다.<br>그리고 <code>ep_item_poll</code>함수를 호출하여 모니터링하기를 원하는 소켓이 저장된 <code>epitem</code>와 소켓의 wait queue에 wait을 넣기위한 콜백함수가 저장된 필드를 인자를 함께 넘깁니다.
+<code>ep_item_poll</code>함수는 모니터링하기 원하는 소켓의 wait_queue에 탐지하기를 원하는 프로세스의 wait을 넣습니다. 그리고 <code>epoll_wait</code>함수를 호출하기전 이미 발생한 이벤트가 있는지 확인하고 있다면 revents로 반환합니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> __poll_t ep_item_poll(<span class="hljs-keyword">const</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span></span> *epi, poll_table *pt,
+                 <span class="hljs-keyword">int</span> depth)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span></span> *file = epi-&gt;ffd.file;
+    __poll_t res;
+
+    pt-&gt;_key = epi-&gt;event.events;
+    <span class="hljs-keyword">if</span> (!is_file_epoll(file))
+        res = vfs_poll(file, pt);
+    <span class="hljs-keyword">else</span>
+        res = __ep_eventpoll_poll(file, pt, depth);
+    <span class="hljs-keyword">return</span> res &amp; epi-&gt;event.events;
+}
+</code></pre>
+<p>ep_item_poll함수에서 넘겨받은 epitem(모니터링 원하는 파일)이 <code>epoll instance</code>가 아니라면 <code>vfs_poll</code>함수를 호출합니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> inline __poll_t vfs_poll(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span></span> *file, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">poll_table_struct</span></span> *pt)
+{
+    <span class="hljs-keyword">if</span> (unlikely(!file-&gt;f_op-&gt;poll))
+        <span class="hljs-keyword">return</span> DEFAULT_POLLMASK;
+    <span class="hljs-keyword">return</span> file-&gt;f_op-&gt;poll(file, pt);
+}
+</code></pre>
+<p><code>vfs_poll</code>함수는 <code>file-&gt;f_op-&gt;poll</code>함수포인터를 호출합니다. 만약 넘겨받은 file이 소켓파일이라면 <code>sock_poll</code>함수를 호출합니다.</p>
+<pre><code class="lang-C"><span class="hljs-comment">/* No kernel lock held - perfect */</span>
+<span class="hljs-keyword">static</span> __poll_t sock_poll(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span></span> *file, poll_table *wait)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">socket</span></span> *sock = file-&gt;private_data;
+    __poll_t events = poll_requested_events(wait), flag = <span class="hljs-number">0</span>;
+
+    <span class="hljs-keyword">if</span> (!sock-&gt;ops-&gt;poll)
+        <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+
+    <span class="hljs-keyword">if</span> (sk_can_busy_loop(sock-&gt;sk)) {
+        <span class="hljs-comment">/* poll once if requested by the syscall */</span>
+        <span class="hljs-keyword">if</span> (events &amp; POLL_BUSY_LOOP)
+            sk_busy_loop(sock-&gt;sk, <span class="hljs-number">1</span>);
+
+        <span class="hljs-comment">/* if this socket can poll_ll, tell the system call */</span>
+        flag = POLL_BUSY_LOOP;
+    }
+
+    <span class="hljs-keyword">return</span> sock-&gt;ops-&gt;poll(file, sock, wait) | flag;
+}
+</code></pre>
+<p>간단한 검증작업을 거친 후 <code>sock-&gt;ops-&gt;poll</code>함수포인터를 호출합니다. 만약 해당 파일이 tcp 소켓파일이라면 <code>poll</code>함수포인터는 <code>tcp_poll</code>함수가 됩니다. </p>
+<pre><code class="lang-C">__poll_t tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
+{
+    __poll_t mask;
+    struct sock *sk = sock-&gt;sk;
+    const struct tcp_sock *tp = tcp_sk(sk);
+    u8 shutdown;
+    int <span class="hljs-keyword">state</span>;
+
+    sock_poll_wait(file, sock, wait);
+
+    <span class="hljs-keyword">state</span> = inet_sk_state_load(sk);
+    if (<span class="hljs-keyword">state</span> == TCP_LISTEN)
+        return inet_csk_listen_poll(sk);
+
+[...]
+}
+</code></pre>
+<p>해당 함수 또한 TCP_ESTABLISHED이후의 상태일때 코드가 있지만 그것은 추후 epoll_wait함수 분석때 다시 살펴보도록 하겠습니다.<br>지금은 단지 sock_poll_wait함수를 호출하고 현재 소켓의 상태가 <code>TCP_LISTEN</code>상태라면 소켓의 <code>accept queue</code>에서 connection 요청된 클라이언트 소켓이 존재하는지 확인합니다. 
+이때 <code>accept queue</code>의 정의는 <code>TCP 3 Way Handshake</code>가 끝난 소켓을 의미합니다. </p>
+<p>sock_poll_wait함수를 살펴보도록 하겠습니다. </p>
+<pre><code class="lang-C"><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-keyword">void</span> <span class="hljs-title">sock_poll_wait</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> file *filp, <span class="hljs-keyword">struct</span> socket *sock,
+                  poll_table *p)</span>
+</span>{
+    <span class="hljs-keyword">if</span> (!poll_does_not_wait(p)) {
+        poll_wait(filp, &amp;sock-&gt;wq.wait, p);
+        smp_mb();
+    }
+}
+</code></pre>
+<p><code>poll_does_not_wait</code>함수를 호출해서 넘겨받은 <code>poll_table *p</code>의 콜백함수가 NULL이 아닌지 확인합니다. 이전에 <code>ep_insert</code>함수에서 <code>init_poll_funcptr(&amp;epq.pt, ep_ptable_queue_proc);</code> 해당 코드를 실행했기 때문에 해당 값은 참이 됩니다.<br>그러면 <code>poll_wait</code>함수를 호출하게 됩니다. </p>
+<pre><code class="lang-C"><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-keyword">void</span> <span class="hljs-title">poll_wait</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> file * filp, <span class="hljs-keyword">wait_queue_head_t</span> * wait_address, poll_table *p)</span>
+</span>{
+    <span class="hljs-keyword">if</span> (p &amp;&amp; p-&gt;_qproc &amp;&amp; wait_address)
+        p-&gt;_qproc(filp, wait_address, p);
+}
+</code></pre>
+<p><code>poll_wait</code>함수는 <code>poll_talbe *p</code>의 <code>_qproc</code>함수포인터를 호출합니다. 이는 이전에 설정한 <code>ep_ptable_queue_proc</code>함수가 됩니다.해당 함수의 2번째 인자로 wait_address가 주어지는데 이는 모니터링하기를 원하는 소켓파일의 wait_queue입니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> void ep_ptable_queue_proc(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">file</span></span> *file, wait_queue_head_t *whead,
+                 poll_table *pt)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ep_pqueue</span></span> *epq = container_of(pt, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ep_pqueue</span></span>, pt);
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span></span> *epi = epq-&gt;epi;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eppoll_entry</span></span> *pwq;
+
+    <span class="hljs-keyword">if</span> (unlikely(!epi))    <span class="hljs-comment">// an earlier allocation has failed</span>
+        <span class="hljs-keyword">return</span>;
+
+    pwq = kmem_cache_alloc(pwq_cache, GFP_KERNEL);
+    <span class="hljs-keyword">if</span> (unlikely(!pwq)) {
+        epq-&gt;epi = NULL;
+        <span class="hljs-keyword">return</span>;
+    }
+
+    init_waitqueue_func_entry(&amp;pwq-&gt;wait, ep_poll_callback);
+    pwq-&gt;whead = whead;
+    pwq-&gt;base = epi;
+    <span class="hljs-keyword">if</span> (epi-&gt;event.events &amp; EPOLLEXCLUSIVE)
+        add_wait_queue_exclusive(whead, &amp;pwq-&gt;wait);
+    <span class="hljs-keyword">else</span>
+        add_wait_queue(whead, &amp;pwq-&gt;wait);
+    pwq-&gt;next = epi-&gt;pwqlist;
+    epi-&gt;pwqlist = pwq;
+}
+</code></pre>
+<p><code>ep_ptable_queue_proc</code>함수는 <code>poll_table *pt</code>로 부터 <code>container_of</code>매크로 함수를 이용하여 <code>ep_pqueue</code>를 꺼내옵니다. 해당 구조체에는 이전에 대입한 epitem이 존재합니다.   </p>
+<pre><code class="lang-C"><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-keyword">void</span>
+<span class="hljs-title">init_waitqueue_func_entry</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> wait_queue_entry *wq_entry, <span class="hljs-keyword">wait_queue_func_t</span> func)</span>
+</span>{
+    wq_entry-&gt;flags        = <span class="hljs-number">0</span>;
+    wq_entry-&gt;<span class="hljs-keyword">private</span>    = <span class="hljs-literal">NULL</span>;
+    wq_entry-&gt;func        = func;
+}
+</code></pre>
+<p>그리고 <code>init_waitqueue_func_entry</code>함수를 호출하여 모니터링하기를 원하는 소켓의 wait queue에 넣기전 넣으려는 wait이 wakeup되었을 때 어떤 함수를 호출하게 할것인지 콜백함수를 설정합니다. 여기서는 <code>ep_poll_callback</code>함수를 설정했습니다.   </p>
+<p>그리고 만약 사용자가 설정한 이벤트가 <code>EPOLLEXCLUSIVE</code>이벤트가 포함되어 있다면 <code>add_wait_queue_exclusive</code>함수를 호출하고 그렇지 않다면 <code>add_wait_queue</code>함수를 호출하여 소켓의 wait queue에 호출한 프로세스의 wait_entry를 LIFO냐, FIFO냐 형태로 넣습니다.   </p>
+<p>만일 <code>add_wait_queue_exclusive</code>함수를 호출해서 큐에 넣는다면 이때 flags값으로 <code>WQ_FLAG_EXCLUSIVE</code>값을 추가하고 넣습니다. <code>add_wait_queue</code>라면 해당 값은 지우고 넣습니다. </p>
+<p>즉, 여기까지 정리하자면 <code>ep_insert</code>함수에서 epitem을 등록하고 모니터링하기를 원하는 소켓 파일의 wait queue에 요청한 프로세스의 wait_entry를 넣습니다. 이때 wait_entry는 프로세스의 태스크라고 보면 편합니다. 그리고 해당 소켓에 이벤트가 도착할 때는 <code>ep_poll_callback</code>함수를 호출함까지 보았습니다. 그리고 <code>epoll_wait</code>함수를 호출하기전에 이벤트가 도착한것이 있는지 확인하고 revents변수에 반환합니다. </p>
+<pre><code class="lang-C"><span class="hljs-comment">/* ep_insert 함수 이어서 */</span>
+<span class="hljs-keyword">if</span> (revents &amp;&amp; !ep_is_linked(epi)) {
+    <span class="hljs-function"><span class="hljs-title">list_add_tail</span>(&amp;epi-&gt;</span><span class="hljs-function"><span class="hljs-title">rdllink</span>, &amp;ep-&gt;</span>rdllist);
+    ep_pm_stay_awake(epi);
+
+    <span class="hljs-function"><span class="hljs-title">if</span> (waitqueue_active(&amp;ep-&gt;</span>wq))
+        <span class="hljs-function"><span class="hljs-title">wake_up</span>(&amp;ep-&gt;</span>wq);
+    <span class="hljs-function"><span class="hljs-title">if</span> (waitqueue_active(&amp;ep-&gt;</span>poll_wait))
+        pwake++;
+}
+[...]
+<span class="hljs-keyword">if</span> (pwake)
+    ep_poll_safewake(ep, NULL, <span class="hljs-number">0</span>);
+
+return <span class="hljs-number">0</span>;
+</code></pre>
+<p>다시 <code>ep_insert</code>함수를 이어서 보겠습니다 이전에 <code>ep_item_poll</code>함수를 호출하고나서 revents값이 반환된다고 했는데 이는 대기하기전 이미 도착한 이벤트의 알림 유무입니다. 
+이때는 어떤 상황이 발생할 수 있냐면 클라이언트의 소켓을 accept하고나서 <code>EPOLL_CTL_ADD</code>로 등록하기전에 이미 클라이언트가 데이터를 전송했을 때 해당 로직이 트리거될 수 있습니다. 그렇다면 이때의 revents값은 <code>(EPOLLIN | EPOLLRDNORM)</code>값이 세팅됩니다.</p>
+<p>그리고 <code>epi-&gt;rdllink</code>를 <code>ep-&gt;rdllist</code>의 끝에 추가합니다. 추측컨대 이때 <code>epi-&gt;rdllink</code>를 넣는 이유는 커널 리스트 자료구조상 구조체를 바로 넣지 못하고 리스트형식으로 연결되어야 하기 때문이다. 그리고 <code>rdllist</code>는 준비가 된 epitem 리스트들입니다.</p>
+<p>그리고 <code>waitqueue_active</code>함수를 호출하여 <code>epoll instance</code>의 wait queue에 프로세스들의 wait이 있는지 확인하고 있다고 wake_up함수를 호출해서 깨웁니다. 그렇지않다면 rdllist만 보존됩니다.</p>
+<p>여기서 하나의 질문이 들 수 있습니다.<br><strong><em>&quot;왜 epoll_wait에서 한번에 하면 좋은데 왜 epoll_ctl과정에서 한번 체크를 해야하나요?&quot;</em></strong>
+이에대한 답은 웹서버를 예로들 수 있습니다. 클라이언트를 accept하고 나서 클라이언 소켓을 epoll_ctl을 통해 모니터링하고자 하기전에 데이터를 주면 epoll_wait에서는 timeout 설정말고는 확인할 수 없습니다. 그 이유는 콜백함수인 <code>ep_poll_callback</code>은 해당 소켓에 변화가 감지되었을 때만 호출되기 때문입니다.   </p>
+<p>즉, 데이터를 놓지지 않기 위해 <code>epoll_ctl</code>하는 과정에서 확인하는 이유입니다. </p>
+<h3 id="epoll_wait">epoll_wait</h3>
+<p>이제 마지막 syscall입니다. 지금까지는 <code>epoll instance</code>를 만들고 모니터링하기를 원하는 소켓을 원하는 이벤트와 함께 등록을 진행했습니다. 이제는 모니터링을 진행하는 로직을 수행해야 합니다.</p>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/evevntpoll.c */</span>
+SYSCALL_DEFINE4(epoll_wait, <span class="hljs-keyword">int</span>, epfd, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *, events,
+        <span class="hljs-keyword">int</span>, maxevents, <span class="hljs-keyword">int</span>, timeout)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">timespec64</span></span> to;
+
+    <span class="hljs-keyword">return</span> do_epoll_wait(epfd, events, maxevents,
+                 ep_timeout_to_timespec(&amp;to, timeout));
+}
+</code></pre>
+<p>epoll_wait syscall은 내부족으로 do_epoll_wait함수를 호출하여 로직을 수행합니다.   </p>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c */</span>
+<span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> do_epoll_wait(<span class="hljs-keyword">int</span> epfd, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *events,
+             <span class="hljs-keyword">int</span> maxevents, <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">timespec64</span></span> *to)
+{
+    <span class="hljs-keyword">int</span> error;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">fd</span></span> f;
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep;
+
+    <span class="hljs-comment">/* The maximum number of event must be greater than zero */</span>
+    <span class="hljs-keyword">if</span> (maxevents &lt;= <span class="hljs-number">0</span> || maxevents &gt; EP_MAX_EVENTS)
+        <span class="hljs-keyword">return</span> -EINVAL;
+
+    <span class="hljs-comment">/* Verify that the area passed by the user is writeable */</span>
+    <span class="hljs-keyword">if</span> (!access_ok(events, maxevents * <span class="hljs-keyword">sizeof</span>(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span>)))
+        <span class="hljs-keyword">return</span> -EFAULT;
+
+    <span class="hljs-comment">/* Get the "struct file *" for the eventpoll file */</span>
+    f = fdget(epfd);
+    <span class="hljs-keyword">if</span> (!f.file)
+        <span class="hljs-keyword">return</span> -EBADF;
+
+    <span class="hljs-comment">/*
+     * We have to check that the file structure underneath the fd
+     * the user passed to us _is_ an eventpoll file.
+     */</span>
+    error = -EINVAL;
+    <span class="hljs-keyword">if</span> (!is_file_epoll(f.file))
+        goto error_fput;
+
+    <span class="hljs-comment">/*
+     * At this point it is safe to assume that the "private_data" contains
+     * our own data structure.
+     */</span>
+    ep = f.file-&gt;private_data;
+
+    <span class="hljs-comment">/* Time to fish for events ... */</span>
+    error = ep_poll(ep, events, maxevents, to);
+
+error_fput:
+    fdput(f);
+    <span class="hljs-keyword">return</span> error;
+}
+</code></pre>
+<p><code>do_epoll_wait</code>함수는 각종 유효성 검사를 진행합니다. maxevents의 값이 옳은지, 사용자가 넘긴 events가 유효한 값인지, epfd가 epoll instance가 맞는등을 검사합니다.<br>만약 적절하다면 private_data에서 이전에 저장한 <code>struct eventpoll</code>구조체를 가지고옵니다. 그리고 <code>ep_poll</code>함수를 호출하여 본격적인 로직을 수행합니다. 해당 함수 또한 크기가 크기 때문에 기능별로 나누어서 설명하겠습니다.</p>
+<pre><code class="lang-C"><span class="hljs-comment">/* fs/eventpoll.c */</span>
+<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> <span class="hljs-title">ep_poll</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> eventpoll *ep, <span class="hljs-keyword">struct</span> epoll_event __user *events,
+           <span class="hljs-keyword">int</span> maxevents, <span class="hljs-keyword">struct</span> timespec64 *timeout)</span>
+</span>{
+    <span class="hljs-keyword">int</span> res, eavail, timed_out = <span class="hljs-number">0</span>;
+    u64 slack = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">wait_queue_entry_t</span> wait;
+    <span class="hljs-keyword">ktime_t</span> expires, *to = <span class="hljs-literal">NULL</span>;
+[...]
+    eavail = ep_events_available(ep);
+</code></pre>
+<p>먼저 루프에 들어가기전에 모니터링 대상에 이벤트가 발생했는지 <code>ep_events_available</code>함수를 호출하여 확인합니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> inline <span class="hljs-keyword">int</span> ep_events_available(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep)
+{
+    <span class="hljs-keyword">return</span> !list_empty_careful(&amp;ep-&gt;rdllist) ||
+        READ_ONCE(ep-&gt;ovflist) != EP_UNACTIVE_PTR;
+}
+</code></pre>
+<p><code>rdllist</code>의 값이 empty하지 않는가 또는 rb tree가 비지않았는가 등을 검사하여 이벤트가 있는지 확인합니다. 이전에 이벤트가 발생했다면 <code>epi-&gt;rdllink</code>의 값을 <code>ep-&gt;rdllist</code>에 추가(연결)하였는것을 기억할 수 있습니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">while</span> (<span class="hljs-number">1</span>) {
+    <span class="hljs-keyword">if</span> (eavail) {
+        res = ep_send_events(ep, events, maxevents);
+        <span class="hljs-keyword">if</span> (res)
+            <span class="hljs-keyword">return</span> res;
+    }
+
+    <span class="hljs-keyword">if</span> (timed_out)
+        <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+[...]
+    __set_current_state(TASK_INTERRUPTIBLE);
+
+    eavail = ep_events_available(ep);
+    <span class="hljs-keyword">if</span> (!eavail)
+        __add_wait_queue_exclusive(&amp;ep-&gt;wq, &amp;<span class="hljs-keyword">wait</span>);
+
+    write_unlock_ir<span class="hljs-string">q(&amp;ep-&gt;lock)</span>;
+
+    <span class="hljs-keyword">if</span> (!eavail)
+        timed_out = !schedule_hrtimeout_range(to, slack,
+                                HRTIMER_MODE_ABS);
+    __set_current_state(TASK_RUNNING);
+
+    eavail = <span class="hljs-number">1</span>;
+
+    <span class="hljs-keyword">if</span> (!list_empty_careful(&amp;wait.entry)) {
+        write_lock_ir<span class="hljs-string">q(&amp;ep-&gt;lock)</span>;
+
+        <span class="hljs-keyword">if</span> (timed_out)
+            eavail = list_empty(&amp;wait.entry);
+        __remove_wait_queue(&amp;ep-&gt;wq, &amp;<span class="hljs-keyword">wait</span>);
+        write_unlock_ir<span class="hljs-string">q(&amp;ep-&gt;lock)</span>;
+    }
+}
+}
+</code></pre>
+<p>그래서 만약 이벤트가 있었다면 <code>ep_send_events</code>함수를 호출하여 사용자가 전달한 events변수에 maxevents만큼 값을 쓰고 종료합니다. 그렇지않다면 루프를 진행합니다.   </p>
+<p>만약 이벤트가 없어 루프가 진행된다면 해당 프로세스에대한 wait을하나 만들고 해당 프로세스의 상태를 <code>TASK_INTERRUPTIBLE</code>상태로 설정합니다. 그리고 정말 대기모드에 진입하기 전에 마지막으로 정말 이벤트가 없었는지 확인합니다. 만약 없다면 <code>epoll_instance</code>의 wait queue에 해당 프로세스의 wait을 추가합니다. 그리고 <code>schedule_hrtimeout_range</code>함수를 호출하여 지정된 시간동안 SLEEP합니다.  </p>
+<p>그리고 지정된 시간이 지났거나 누군가 강제로 깨웠다면 <code>epoll instance</code>의 wait_queue에서 자신의 wait을 제거한다음 프로세스의 상태를 <code>TASK_RUNNING</code>상태로 설정합니다. 그리고 다시 처음 루프문을 실행합니다.   </p>
+<p>여기서 지정된 시간이 아닌 누군가가 깨웠다는 전제하에 설명을 추가적으로 해보겠습니다.<br>과연 누가 대기모드에 빠진 프로세스를 깨운것일까요? 그것은 모니터링하고자 하는 소켓이 이벤트가 발생하여 wakeup된것입니다. 그럼 과정을 한번 살펴보겠습니다.</p>
+<p>먼저 TCP 소켓기준 데이터가 온다면 <code>sock_def_readable</code>함수를 호출하게 됩니다. </p>
+<pre><code class="lang-C">void sock_def_readable(<span class="hljs-name">struct</span> sock *sk)
+{
+    struct socket_wq *wq<span class="hljs-comment">;</span>
+
+    trace_sk_data_ready(<span class="hljs-name">sk</span>)<span class="hljs-comment">;</span>
+
+    rcu_read_lock()<span class="hljs-comment">;</span>
+    wq = rcu_dereference(<span class="hljs-name">sk-&gt;sk_wq</span>)<span class="hljs-comment">;</span>
+    if (<span class="hljs-name">skwq_has_sleeper</span>(<span class="hljs-name">wq</span>))
+        wake_up_interruptible_sync_poll(<span class="hljs-name">&amp;wq-&gt;wait</span>, EPOLLIN | EPOLLPRI |
+                        EPOLLRDNORM | EPOLLRDBAND)<span class="hljs-comment">;</span>
+    sk_wake_async(<span class="hljs-name">sk</span>, SOCK_WAKE_WAITD, POLL_IN)<span class="hljs-comment">;</span>
+    rcu_read_unlock()<span class="hljs-comment">;</span>
+}
+</code></pre>
+<p><code>sock_def_readable</code>함수는 자신의 소켓의 wait_queue를 가지고옵니다. 그리고 <code>wake_up_interruptible_sync_poll</code>함수를 호출하게 됩니다. 이때 넣는 인자로는 어떤 이벤트인지 알려주는 플래그값이 포함되어 있습니다. <code>wake_up_interruptible_sync_poll</code>함수는 내부적으로 <code>__wake_up_common</code>함수를 호출하게 됩니다.  </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> __wake_up_common(<span class="hljs-keyword">struct</span> wait_queue_head *wq_head, <span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span> mode,
+            <span class="hljs-keyword">int</span> nr_exclusive, <span class="hljs-keyword">int</span> wake_flags, <span class="hljs-keyword">void</span> *key,
+            <span class="hljs-keyword">wait_queue_entry_t</span> *bookmark)
+{
+    <span class="hljs-keyword">wait_queue_entry_t</span> *curr, *next;
+    <span class="hljs-keyword">int</span> cnt = <span class="hljs-number">0</span>;
+
+[...]
+    list_for_each_entry_safe_from(curr, next, &amp;wq_head-&gt;head, entry) {
+        <span class="hljs-keyword">unsigned</span> flags = curr-&gt;flags;
+        <span class="hljs-keyword">int</span> ret;
+[...]
+        ret = curr-&gt;func(curr, mode, wake_flags, key);
+        <span class="hljs-keyword">if</span> (ret &lt; <span class="hljs-number">0</span>)
+            <span class="hljs-keyword">break</span>;
+        <span class="hljs-keyword">if</span> (ret &amp;&amp; (flags &amp; WQ_FLAG_EXCLUSIVE) &amp;&amp; !--nr_exclusive)
+            <span class="hljs-keyword">break</span>;
+[...]
+    }
+
+    <span class="hljs-keyword">return</span> nr_exclusive;
+}
+</code></pre>
+<p>많은 양의 로직을 제거하고 핵심적인 것만 뽑아냈습니다. 먼저 <code>list_for_each_entry_safe_from</code>매크로 함수를 호출하여 소켓의 wait queue를 이터레이팅합니다. 그리고 <code>curr-&gt;func</code>함수 포인터를 호출하는데 이는 이전에 설정한 <code>ep_poll_callback</code>함수입니다. 해당 함수를 호출하고나서 만약 flags값이 <code>WQ_FLAG_EXCLUSIVE</code>플래그가 포함되어 있다면 해당 로직을 중단합니다. 해당 플래그는 이전에 <code>EPOLLEXCLUSIVE</code>이벤트를 포함시켰을 때 같이 활성화된 것을 보았습니다. 즉, 여기서 알 수 있듯이 <code>EPOLLEXCLUSIVE</code>이벤트는 소켓의 wait queue에 물린 여러 프로세스중 하나의 프로세스만을 깨우는 것을 확인할 수 있습니다.<br>그럼 다시 호출되는 콜백함수인 <code>ep_poll_callback</code>함수를 살펴보겠습니다.</p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> ep_poll_callback(wait_queue_entry_t *wait, unsigned mode, <span class="hljs-keyword">int</span> sync, void *key)
+{
+    <span class="hljs-keyword">int</span> pwake = <span class="hljs-number">0</span>;
+    struct epitem *epi = ep_item_from_wait(wait);
+    struct eventpoll *ep = epi-&gt;ep;
+    __poll_t pollflags = key_to_poll(key);
+    unsigned <span class="hljs-keyword">long</span> flags;
+    <span class="hljs-keyword">int</span> ewake = <span class="hljs-number">0</span>;
+[...]
+    <span class="hljs-keyword">if</span> (READ_ONCE(ep-&gt;ovflist) != EP_UNACTIVE_PTR) {
+        <span class="hljs-keyword">if</span> (chain_epi_lockless(epi))
+            ep_pm_stay_awake_rcu(epi);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (!ep_is_linked(epi)) {
+        <span class="hljs-comment">/* In the usual case, add event to ready list. */</span>
+        <span class="hljs-keyword">if</span> (list_add_tail_lockless(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist))
+            ep_pm_stay_awake_rcu(epi);
+    }
+
+[...]
+    <span class="hljs-keyword">if</span> (waitqueue_active(&amp;ep-&gt;wq)) {
+        <span class="hljs-keyword">if</span> ((epi-&gt;event.events &amp; EPOLLEXCLUSIVE) &amp;&amp;
+                    !(pollflags &amp; POLLFREE)) {
+            <span class="hljs-keyword">switch</span> (pollflags &amp; EPOLLINOUT_BITS) {
+            <span class="hljs-keyword">case</span> EPOLLIN:
+                <span class="hljs-keyword">if</span> (epi-&gt;event.events &amp; EPOLLIN)
+                    ewake = <span class="hljs-number">1</span>;
+                <span class="hljs-keyword">break</span>;
+            <span class="hljs-keyword">case</span> EPOLLOUT:
+                <span class="hljs-keyword">if</span> (epi-&gt;event.events &amp; EPOLLOUT)
+                    ewake = <span class="hljs-number">1</span>;
+                <span class="hljs-keyword">break</span>;
+            <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>:
+                ewake = <span class="hljs-number">1</span>;
+                <span class="hljs-keyword">break</span>;
+            }
+        }
+        wake_up(&amp;ep-&gt;wq);
+    }
+[...]
+    <span class="hljs-keyword">return</span> ewake;
+}
+</code></pre>
+<p>먼저 <code>list_add_tail_lockless</code>함수를 호출하여 이전처럼 활성화된 epitem을 <code>ep-&gt;rdllist</code>의 큐에 추가시킵니다. 그리고 <code>epoll instance</code>의 wait queue에 대기중인 프로세스가 있는지 확인하고 있다면 <code>wake_up</code>함수를 호출하여 <code>epoll instance</code>의 wait queue에 대기중인 프로세스를 깨웁니다. 깨우는 과정은 위에서 소켓의 경우를 예를 들어 설명하였습니다.</p>
+<p>그럼 <code>ep_poll_callback</code>함수를 호출하여 프로세스를 깨운다면 이전에 <code>ep_poll</code>함수에서 SLEEP중인 프로세스가 깨어나게 되며 <code>ep_send_events</code>함수를 호출합니다.<br>이제 정말 마지막입니다. 해당 함수에서 <code>Level Trigger</code>와 <code>Edge Trigger</code>의 동작 차이를 볼 수 있는 중요한 함수입니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> ep_send_events(<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">eventpoll</span></span> *ep,
+              <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *events, <span class="hljs-keyword">int</span> maxevents)
+{
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epitem</span></span> *epi, *tmp;
+    LIST_HEAD(txlist);
+    poll_table pt;
+    <span class="hljs-keyword">int</span> res = <span class="hljs-number">0</span>;
+[...]
+    ep_start_scan(ep, &amp;txlist);
+
+    list_for_each_entry_safe(epi, tmp, &amp;txlist, rdllink) {
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">wakeup_source</span></span> *ws;
+        __poll_t revents;
+
+        <span class="hljs-keyword">if</span> (res &gt;= maxevents)
+            <span class="hljs-keyword">break</span>;
+[...]
+        list_del_init(&amp;epi-&gt;rdllink);
+[...]
+        revents = ep_item_poll(epi, &amp;pt, <span class="hljs-number">1</span>);
+        <span class="hljs-keyword">if</span> (!revents)
+            <span class="hljs-keyword">continue</span>;
+
+        events = epoll_put_uevent(revents, epi-&gt;event.data, events);
+        <span class="hljs-keyword">if</span> (!events) {
+            list_add(&amp;epi-&gt;rdllink, &amp;txlist);
+            ep_pm_stay_awake(epi);
+            <span class="hljs-keyword">if</span> (!res)
+                res = -EFAULT;
+            <span class="hljs-keyword">break</span>;
+        }
+
+        res++;
+[...]
+        <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (!(epi-&gt;event.events &amp; EPOLLET)) {
+            list_add_tail(&amp;epi-&gt;rdllink, &amp;ep-&gt;rdllist);
+            ep_pm_stay_awake(epi);
+        }
+    }
+    ep_done_scan(ep, &amp;txlist);
+    mutex_unlock(&amp;ep-&gt;mtx);
+
+    <span class="hljs-keyword">return</span> res;
+}
+</code></pre>
+<p>해당 함수는 먼저 <code>ep_start_scan</code>함수를 호출하여 <code>ep-&gt;rdllist</code>를 <code>txtlist</code>로 list slice합니다. 그리고 이를 <code>list_for_each_entry_safe</code>매크로함수를 호출하여 리스트를 이터레이팅합니다.<br>그리고 res값을 maxevents값과 비교하는데 이는 사용자가 요청한 검사할 최대값입니다.<br>그리고 <code>ep_item_poll</code>함수를 호출하여 이벤트가 있는지 확인합니다.<br>즉, TCP 소켓의 경우 <code>tcp_poll</code>함수를 호출합니다. 이전에 <code>TCP_LISTEN</code>상태일때만 보고 <code>TCP_ESTABLISHED</code>상태일 때는 확인하지 못했는데 지금 확인해보겠습니다.</p>
+<pre><code class="lang-C">__poll_t tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
+{
+[...]
+    shutdown = READ_ONCE(sk-&gt;sk_shutdown);
+    <span class="hljs-keyword">if</span> (shutdown == SHUTDOWN_MASK |<span class="hljs-type">| state</span> == TCP_CLOSE)
+        mask |<span class="hljs-type">= EPOLLHUP</span>;
+    <span class="hljs-keyword">if</span> (shutdown &amp; RCV_SHUTDOWN)
+        mask |<span class="hljs-type">= EPOLLIN</span> | <span class="hljs-type">EPOLLRDNORM</span> | <span class="hljs-type">EPOLLRDHUP</span>;
+
+    /* Connected or passive Fast <span class="hljs-keyword">Open</span> socket? */
+    <span class="hljs-keyword">if</span> (state != TCP_SYN_SENT &amp;&amp;
+        (state != TCP_SYN_RECV |<span class="hljs-type">| rcu_access_pointer</span>(tp-&gt;fastopen_rsk))) {
+        int target = sock_rcvlowat(sk, <span class="hljs-number">0</span>, INT_MAX);
+        u16 urg_data = READ_ONCE(tp-&gt;urg_data);
+
+        <span class="hljs-keyword">if</span> (unlikely(urg_data) &amp;&amp;
+            READ_ONCE(tp-&gt;urg_seq) == READ_ONCE(tp-&gt;copied_seq) &amp;&amp;
+            !sock_flag(sk, SOCK_URGINLINE))
+            target++;
+
+        <span class="hljs-keyword">if</span> (tcp_stream_is_readable(sk, target))
+            mask |<span class="hljs-type">= EPOLLIN</span> | <span class="hljs-type">EPOLLRDNORM</span>;
+    }
+[...]
+    <span class="hljs-keyword">return</span> mask;
+}
+</code></pre>
+<p>소켓의 상태를 확인하여 에러가 발생하면 에러 플래그를 반환합니다. 그렇지 않고 읽을 수 있는 데이터가 존재하는지 확인하기 위햇 <code>tcp_stream_is_readable</code>함수를 호출하여 데이터를 읽을 수 있다면 <code>EPOLLIN</code> 플래그를 활성화 시키고 반환합니다.   </p>
+<p>다시 돌아와서 <code>ep_item_poll</code>함수를 호출하게 되면 활성화된 이벤트가 반환됩니다.<br>여담으로 <code>ep_item_poll</code>함수를 호출하면 소켓에 후킹하는 것이 아니냐는 의문이 있을 수 있습니다. 하지만 지금 호출할 때는 <code>_qproc</code>값이 NULL이기 때문에 후킹을 진행하기 않습니다.  </p>
+<p>만약 관심이벤트가 존재한다면 <code>epoll_put_event</code>함수를 호출하여 유저가 요청한 events목록에 값을 씁니다. </p>
+<pre><code class="lang-C"><span class="hljs-keyword">static</span> inline <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *
+epoll_put_uevent(__poll_t revents, __<span class="hljs-keyword">u64</span> data,
+         <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">epoll_event</span></span> __user *uevent)
+{
+    <span class="hljs-keyword">if</span> (__put_user(revents, &amp;uevent-&gt;events) ||
+        __put_user(data, &amp;uevent-&gt;data))
+        <span class="hljs-keyword">return</span> NULL;
+
+    <span class="hljs-keyword">return</span> uevent+<span class="hljs-number">1</span>;
+}
+</code></pre>
+<p>그리고 값을 썼다면 사용자가 요청한 EPOLL 플래그값에 <code>EPOLLET</code>값이 포함되어 있는지 확인합니다. 만약 포함되어 있지않다면 즉, <code>Level Trigger</code>모드라면 다시한번 <code>ep-&gt;rdllist</code>에 <code>epi-&gt;rdllink</code>값을 추가하여 이벤트가 있음을 알립니다.   </p>
+<p>이는 <code>ep_poll</code>함수에서 <code>ep_events_available</code>함수를 호출하면서 이벤트가 있음을 알게됩니다.    그렇지않고 <code>Edge Trigger</code>모드라면 이번 이벤트가 끝이게 됩니다. 그리고 함수는 이벤트가 발생한 소켓의 갯수 <code>res</code>값을 반환하고 종료됩니다. </p>
+<h3 id="-">요약</h3>
+<p>epoll 인터페이스를 사용하기 위해서는 <code>epoll_create</code>, <code>epoll_ctl</code>, <code>epoll_wait</code>3개의 syscall이 존재합니다.<br>먼저, <code>epoll_create</code>함수는 <code>struct eventpoll</code>구조체를 할당하고 이를 file의 private_data에 저장하여 추후 파일디스크립터로만으로 꺼낼 수 있도록 합니다. 그리고 EPOLL 파일디스크립터를 반환합니다. </p>
+<p><code>epoll_ctl</code>함수는 3가지의 동작으로 나눌 수 있습니다. <code>EPOLL_CTL_ADD</code>, <code>EPOLL_CTL_MOD</code>, <code>EPOLL_CTL_DEL</code>.<br><code>EPOLL_CTL_ADD</code>의 경우 <code>ep_insert</code>함수를 호출하여 모니터링하려는 파일의 프로세스 대기큐인 wait queue에 <code>epoll_ctl</code>을 호출한 프로세스의 wait_entry를 삽입합니다. 그리고 wakeup시 호출되는 콜백함수로는 <code>ep_poll_callback</code>함수를 등록합니다.<br>또한, <code>epoll_wait</code>함수를 호출하기전 이벤트가 있었는지 확인하고 있었다면 <code>ep-&gt;rdllist</code>에 활성화된 이벤트를 추가합니다.  </p>
+<p>이렇게 동작하는 이유는 웹서버를 예를 들어 이전에 설명했듯이 클라이언트 수락후 <code>epoll_wait</code>하는 과정에서 사이에 데이터의 변화가 발생할 수 있다는 가정입니다. <code>ep_poll_callback</code>콜백함수는 데이터의 변화가 감지되어야 호출되는 콜백함수인데 <code>epoll_wait</code>전에 감지된 이벤트에대해서는 무시하게 되기때문입니다. </p>
+<p>또한 <code>ep_insert</code>함수는 모니터링하고자하는 파일디스크립터에 대한 <code>struct epitem</code>을 레드블랙트리로 관리합니다. </p>
+<p>마지막으로 <code>epoll_wait</code>함수는 사용자가 지정한 타임아웃 만큼 대기모드에 빠집니다. 이때 프로세스의 상태는 <code>TASK_INTERRUPTIBLE</code>로 설정합니다. 만일 <code>ep_poll_callback</code>함수를 통해 프로세스가 <code>TASK_RUNNING</code>상태로 바꼈다면 이벤트가 발생했다는 가정하게 로직을 수행하게 됩니다. 그렇기 때문에 <code>spurious wakeup</code>이 발생하여 활성화된 이벤트 목록 갯수 0이 반환될 수 있는 것입니다. 만약 이벤트가 존재한다면 <code>ep_send_events</code>함수를 호출하여 이벤트가 활성화된 <code>epitem</code>들을 이터레이팅하여 사용자가 전달한 <code>struct epoll_event</code>구조체에 값을 기입합니다.   </p>
+<p>만약 사용자가 <code>Edge Trigger</code> 모드를 사용한다면 한번 발생한 이벤트에 대해서는 추가알림을 하지않습니다. 하지만 <code>Level Trigger</code>모드를 사용한다면 데이터를 사용자에게 전달하고 나서 다시 활성화된 이벤트리스트에 <code>epitem</code>을 추가하게 됩니다. 즉, 데이터가 읽일때까지 무한적으로 알림을 발생시키게 됩니다. </p>
+<h3 id="-">업데이트</h3>
+<p>사용자가 이벤트를 수거하기전에 같은 파일디스크립터에 이벤트가 발생하면 <code>ep-&gt;rdllist</code>에 같은 파일디스크립터가 2개이상 들어갈 수 있지않은가 의문이 들 수 있습니다. 이때는 <code>ep_is_linked</code>함수를 사용하여 이미 <code>ep-&gt;rdllist</code>에 해당 파일디스크립터가 있는지 확인합니다. 있다면 즉, 연결되어있다면 추가하지 않습니다. </p>
+<h3 id="-">코멘트</h3>
+<p>지금까지 epoll이 어떻게 만들어졌는지 어떻게 동작하는지 등을 알아보았습니다. 물론 방대한 소스코드를 부족한 실력으로 분석한것이기때문에 분명히 틀린내용이 있을 수 있습니다. 그렇기에 해당 분석글만을 기반하지않고 다른 epoll 분석글을 읽어가면서 보시는것을 추천합니다.<br>찾아본결과 거의다 중국어로 작성된 기술블로그가 많다보니 번역에 어려움이 있을 수 있지만 기술적으로 자세한 내용이 기입되어 있습니다. </p>
+
+</body>
+</html>
