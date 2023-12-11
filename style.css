@@ -113,11 +113,16 @@ h2 {
     color: var(--color-purple);
 }
 
+.vinish{
+    display:none;
+}
+
 #main{
     margin: 0px 48px 0px 48px;
 }
 
-#main div a{
+
+#main div span{
     font-size: var(--font-medium);
     margin: 24px 0px 24px 0px;
     font-weight: bold;
@@ -138,6 +143,10 @@ h2 {
 #main div div p{
     margin: 0px;
     font-weight: bold;
+}
+
+#content{
+    margin: 12px 24px 56px 24px;
 }
 
 @media screen and (max-width: 768px) {

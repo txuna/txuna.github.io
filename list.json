@@ -44,39 +44,39 @@
         },
         {
             "title" : "Redis EventLoop Architecture",
-            "link" : "#",
+            "link" : "./page/redis_eventloop.md",
             "date" : "2023.07.21",
             "category" : "Network"
         },
         {
             "title" : "Nginx EventLoop Architecture",
-            "link" : "#",
+            "link" : "./page/nginx_eventloop.md",
             "date" : "2023.07.27",
             "category" : "Network"
         },
         {
             "title" : "How 3 Way HandShake in Linux Kernel",
-            "link" : "#",
+            "link" : "./page/tcp_3wh.md",
             "date" : "2023.09.21",
             "category" : "Linux Kernel"
         },
         {
             "title" : "accept(2) syscall internal logic",
-            "link" : "#",
+            "link" : "./page/interal_accept.md",
             "date" : "2023.10.29",
-            "category" : "Network"
+            "category" : "Linux Kernel"
         },
         {
             "title" : "커널에서 소켓프로그래밍하기",
-            "link" : "#",
+            "link" : "./page/kernel_socket.md",
             "date" : "2023.11.29",
-            "category" : "Network"
+            "category" : "Linux Kernel"
         },
         {
             "title" : "EPOLL은 어떻게 동작하는가",
-            "link" : "#",
+            "link" : "./page/internal_epoll.md",
             "date" : "2023.12.09",
-            "category" : "Network"
+            "category" : "Linux Kernel"
         }
     ]
 }
