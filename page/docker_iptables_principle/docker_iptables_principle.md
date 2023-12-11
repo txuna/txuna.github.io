@@ -36,6 +36,7 @@ PREROUTING HOOK을 통해 호스트에서 동작하는 내부 어플리케이션
 
 패킷이 해당 호스트 네트워크 인터페이스에 도착하게 된다면 아래와 같은 패킷 흐름을 타게 된다. 
 
+![Untitled](docker_iptables_principle_image/Untitled.png)
 
 iptables에는 Table과 Chain이라는 개념이 있다. 
 
@@ -64,6 +65,8 @@ Chain이란 각 테이블에 존재하는 룰의 집합이라고 생각하면 �
 ### Docker 네트워크 흐름도
 
 일반적으로 Docker또한 호스트 시스템에서 돌아가니까 도커 컨테이너 내에서 실행중인 어플리케이션에 패킷을 전달하면 PREROUTING Chain → INPUT Chain을 거칠것이라고 생각할 수 있다. 하지만 DOCKER Chain과 DOCKER-USER Chain은 INPUT Chain을 타지않고 PREROUTING Chain →  FORWARD Chain → POSTROUTING Chain을 타고 도커 네트워크 인터페이스에 패킷을 전송한다. 
+
+![Untitled](docker_iptables_principle_image/Untitled%201.png)
 
 아래는 iptables rule이다.  각 각의 table에 존재하는 chain에 log action을 설정하여 로깅을 남겨보도록 하고 docker 내의 10000:6379로 동작중인 redis서버를 실행해보기로 했다. 
 

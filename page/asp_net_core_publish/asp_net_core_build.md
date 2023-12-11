@@ -173,6 +173,16 @@ docker run -it -p 5000:80 --name [컨테이너 이름] [이미지 이름]
 
 이 또한 도커에서 80번 포트로 접근이 가능하도록 5000번으로 포트포워딩을 진행한다. 
 
+### 마무리
+
+그렇다면 아래와 같이 3개의 도커가 실행되게 된다. 
+
+![Untitled](./asp_net_core_build_image//Untitled.png)
+
+Postman이나 자신이 만든 클라이언트로 실행을 해보면 잘 될것이다. 
+
+![Untitled](./asp_net_core_build_image/Untitled%201.png)
+
 ### 트러블 슈팅
 
 1. appsetting.json에 ip를 써야하는데 하나의 호스트내에 도커에서 도커로 접속하는 것이라 IP를 어떤것을 써야하는지 애매한데 그냥 Windows 11의 호스트 IP(사설 IP)를 입력하면 된다. 

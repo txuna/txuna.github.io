@@ -98,6 +98,8 @@ eventLoop->apidata = state;
 
 그림으로 표현하자면 아래와 같다. 
 
+![Untitled](./images/Untitled.png)
+
 ### listen & bind & epoll_ctl
 
 `epoll_create`로 `epoll instance`에 대한 `file descriptor`을 받았다면 이제 `server socket`을 만들고 `listen`하고 `bind`하고 `epoll_ctl api`를 통해 해당 `server socket fd` 를 등록해야 한다. 
@@ -741,6 +743,8 @@ static ConnectionType CT_Socket = {
 
 `client fd`일 때는 또 내용이 길어지기 때문에 여기까지 함수의 호출 루틴을 그림으로 표현하고 다음으로 넘어갈 예정이다. 
 
+![Untitled](./images/Untitled%202.png)
+
 그럼 이제 알림받은 파일 디스크립터가 `server socket fd`가 아닌 `client socket fd`일 때를 가정한다. 그렇다면 `aeProcessEvent`함수에서 `EPOLLIN mask`가 되어있다면 `rfileProc`함수 포인터를 호출한다. 이전에 `connSocketEventHandler`함수로 등록했던것이다. 
 
 ```c
@@ -822,3 +826,11 @@ int processInputBuffer(client *c) {
 만일 클라이언트의 입력이 덜 들어왔다면 `processMultibulkBuffe`함수에서 `C_ERR`를 반환하여 `processCommandAndResetClient`함수를 호출하지 않도록 한다. 그리고 추후 입력을 다시 받아서 완전하게 되었을 때 `C_OK`를 반환하여 `processCommandAndResetClient`함수를 호출하여 커맨드를 처리한다. 
 
 지금까지 클라이언트의 요청 처리 장면이다. 그림으로 표현하면 오른쪽 부분이 추가된 부분이다. 
+
+![Untitled](./images/Untitled%203.png)
+
+### 전체적인 프로세스
+
+전체적인 이벤트루프의 구조는 아래와 같다. 
+
+![Untitled](./images/Untitled%204.png)

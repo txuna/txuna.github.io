@@ -42,6 +42,7 @@ ex) `SECCOMP-BPF`
 
 먼저 `CSPF`의 `Tree 모델`에서는 각 각의 노드가 패킷 필드로 표현되고 각 각의 `Edge`(노드를 연결하는 선)은 연산자 피연산자 관계를 지닌다. `(operator-operand)`
 
+![Untitled](./Images/Untitled.png)
 
 `Tree Model`의 경우 구성된 트리를 계산하기 위해 `Stack Machine Code`에 식을 대입하고 계산을 진행한다. 
 
@@ -72,6 +73,7 @@ ex) `SECCOMP-BPF`
 
 `BPF Model`은 `CSPF`의 단점을 극복하고 장점을 취한 방식인 `register based`의 `CFG Model`을 채택했다. 
 
+![Untitled](./Images/Untitled%201.png)
 
 `BPF`는 위의 사진에서 보이는 거처럼 `true or false`로 구성된 `2개의 branch`를 가지며 각 노드에 맞게 계산되어 최종적으로 `true or false`로 결과값을 지닌다. 만약 해당 필터의 흐름의 결과값이 `true(non-zero`)라면 `ACCEPT`, `false`라면 `REJECT`을 의미한다.
 
@@ -79,6 +81,7 @@ ex) `SECCOMP-BPF`
 
 즉, 불필요한 연산을 하지않고 한번의 연산만으로 필터링이 완료됨을 알 수 있다. 
 
+![Untitled](./Images/Untitled%202.png)
 
 위 사진은 `host`가 `foo`인것에 대해서 확인하는 `BPF CFG`이다.  이런식으로 각 노드마다 명령어 셋이 존재하게 되고 명령어에 따라 패킷을 확인하고 해당 값에 따라 점프하여 노드가 분기되어 결론적으로 `false or true`에 도달하게 된다. 
 
@@ -136,12 +139,15 @@ Accumulator 또는 Index Register의 값을 scratch memory store에 저장한다
 
 명령어의 구조는 총 8바이트로 구성되며 아래와 같다. 
 
+![Untitled](./Images/Untitled%203.png)
 
 여기서 `JT, JF필드는 조건부 점프 명령`에 사용되며, 해당 값은 `다음 명령까지의 offset`을 나타낸다. 
 
 만약 3번 라인의 명령어 형식이 {15, 0, 3, 800) 일 때 `JT`의 값대로 분기를 한다는 상황이라면 
 
 4번 라인을 가리키게 되고 `JF`의 값대로 진행한다면 5번라인을 가리키게 된다. 
+
+![Untitled](./Images/Untitled%204.png)
 
 위는 실제 `BPF` 머신에서 사용하는 명령어 셋이다.
 
@@ -162,6 +168,7 @@ jeq, jgt와 같은 `jump 명령어`는 `accumulator`와 상수와 비교한 다�
 만약 amount가 0이라면 해당 패킷은 전체적으로 페기된다. 
 
 다음은 명령어 옆에 어드레싱모드라고 표현했는데 각 각의 표현들을 실제로 어떻게 쓰는지 보여준다. 
+![im](./Images/addr.png)
 
 그럼 실제로 명령어를 어떻게 읽는지 예제를 보면서 확인해보자
 
