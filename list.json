@@ -2,43 +2,43 @@
     "post" : [
         {
             "title" : "asp.net core 7.0 배포하기",
-            "link" : "#",
+            "link" : "./page/asp_docker.md",
             "date" : "2023.05.20",
             "category" : ".Net Core"
         },
         {
             "title" : "DOCKER-USER Chain 활용하기",
-            "link" : "#",
+            "link" : "./page/docker_chain.md",
             "date" : "2023.05.24",
             "category" : "Docker"
         },
         {
             "title" : "Docker가 어떤식으로 Iptables를 구성하는지 살펴보기",
-            "link" : "#123",
+            "link" : "./page/docker_iptable.md",
             "date" : "2023.05.28",
             "category" : "Docker"
         },
         {
             "title" : "Kernel Source Code 바탕으로 Packet이 Local Host로 가기까지 여정 살펴보기",
-            "link" : "#",
+            "link" : "./page/kernel_packet.md",
             "date" : "2023.05.29",
             "category" : "Linux Kernel"
         },
         {
             "title" : "Redis에서 Lua Script를 사용하여 Atomic하게 접근하기",
-            "link" : "#",
+            "link" : "./page/redis_lua.md",
             "date" : "2023.06.09",
             "category" : "Redis"
         },
         {
             "title" : "C++ vtable gdb로 살펴보기",
-            "link" : "#",
+            "link" : "./page/vtable_gdb.nd",
             "date" : "2023.06.21",
             "category" : "C++"
         },
         {
             "title" : "BPF란 무엇인가",
-            "link" : "#",
+            "link" : "./page/bpf.md",
             "date" : "2023.06.26",
             "category" : "Network"
         },
