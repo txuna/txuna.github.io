@@ -98,7 +98,7 @@ eventLoop->apidata = state;
 
 그림으로 표현하자면 아래와 같다. 
 
-![Untitled](./images/Untitled.png)
+![Untitled](./page/redis_eventloop_architecture/images/Untitled.png)
 
 ### listen & bind & epoll_ctl
 
@@ -375,7 +375,7 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
 
 여기까지 `socket fd`를 만들고 `bind`, `listen`하고 `accept_handler`등록하고 `epoll_ctl`을 통해 등록하는 과정이다. 과정을 그림으로 표현하면 아래와 같다. 
 
-![Untitled](./images/Untitled%201.png)
+![Untitled](./page/redis_eventloop_architecture/images/Untitled%201.png)
 
 ### epoll_wait
 
@@ -743,7 +743,7 @@ static ConnectionType CT_Socket = {
 
 `client fd`일 때는 또 내용이 길어지기 때문에 여기까지 함수의 호출 루틴을 그림으로 표현하고 다음으로 넘어갈 예정이다. 
 
-![Untitled](./images/Untitled%202.png)
+![Untitled](./page/redis_eventloop_architecture/images/Untitled%202.png)
 
 그럼 이제 알림받은 파일 디스크립터가 `server socket fd`가 아닌 `client socket fd`일 때를 가정한다. 그렇다면 `aeProcessEvent`함수에서 `EPOLLIN mask`가 되어있다면 `rfileProc`함수 포인터를 호출한다. 이전에 `connSocketEventHandler`함수로 등록했던것이다. 
 
@@ -827,10 +827,10 @@ int processInputBuffer(client *c) {
 
 지금까지 클라이언트의 요청 처리 장면이다. 그림으로 표현하면 오른쪽 부분이 추가된 부분이다. 
 
-![Untitled](./images/Untitled%203.png)
+![Untitled](./page/redis_eventloop_architecture/images/Untitled%203.png)
 
 ### 전체적인 프로세스
 
 전체적인 이벤트루프의 구조는 아래와 같다. 
 
-![Untitled](./images/Untitled%204.png)
+![Untitled](./page/redis_eventloop_architecture/images/Untitled%204.png)

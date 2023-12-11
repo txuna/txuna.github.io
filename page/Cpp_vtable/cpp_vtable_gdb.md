@@ -337,7 +337,7 @@ pwndbg> x/20i $rdx
 
 아래 그림은 디버깅을 통해서 알아본 vtable의 구조를 그림으로 그렸다. 
 
-![Untitled](./images//Untitled.png)
+![Untitled](./page/Cpp_vtable/images//Untitled.png)
 
 ### 순수가상함수는?
 

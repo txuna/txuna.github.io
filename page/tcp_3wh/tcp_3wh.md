@@ -1895,4 +1895,4 @@ out:
 https://github.com/torvalds/linux/commit/079096f103faca2dd87342cca6f23d4b34da8871  
 
 ### 이미지
-![im.png](./image/im.png)
+![im.png](./page/tcp_3wh/image/im.png)

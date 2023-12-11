@@ -10,7 +10,7 @@ docker또한 DOCKER chain, DOCKER-USER chain 이라는 커스텀 iptables chain�
 
 또한, Docker는 기본적으로 아래 사진과 같이 외부의 모든 주소에 대해 허용하는 정책을 지닌다. 
 
-![Untitled](./docker_iptables_images/Untitled.png)
+![Untitled](./page/docker_iptables/docker_iptables_images/Untitled.png)
 
 만약 자신의 룰을 적용하고 싶다면 DOCKER-USER chain에 룰을 작성해야 한다. 도커는 기본적으로 DOCKER chain을 실시간으로 룰을 작성하는 작업을 진행한다. 
 
@@ -28,7 +28,7 @@ sudo docker run -it -p 6379:6379 --name redis ubuntu:22.04
 
 즉, 모든 외부주소에 접근을 허용한다. 
 
-![Untitled](./docker_iptables_images/Untitled%201.png)
+![Untitled](./page/docker_iptables/docker_iptables_images/Untitled%201.png)
 
 하지만 redis서버는 로컬에서만 접근이 가능해야한다. 그러기 위해서는 외부에서 오는 목적지가 6379포트를 막아야 한다. 
 
@@ -40,7 +40,7 @@ sudo iptables -I DOCKER-USER -p tcp --dport 6379 -j DROP
 
 DOCKER-USER chain에 정상적으로 들어간것을 볼 수 있다. 
 
-![Untitled](./docker_iptables_images/Untitled%202.png)
+![Untitled](./page/docker_iptables/docker_iptables_images/Untitled%202.png)
 
 이제 외부에서 접근이 불가능해짐을 알 수 있다. 
 

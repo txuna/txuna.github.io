@@ -343,7 +343,7 @@ struct ngx_listening_s {
 
 해당 과정을 이미지로 보면 아래와 같다. 
 
-![Untitled](./images/Untitled.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled.png)
 
 ### fork()
 
@@ -502,7 +502,7 @@ default:
 
 지금까지의 내용을 그림으로 표현하면 아래와 같다.
 
-![Untitled](./images/Untitled%201.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled%201.png)
 
 ### epoll_create, epoll_ctl, epoll_wait
 
@@ -947,7 +947,7 @@ events = epoll_wait(ep, event_list, (int) nevents, timer);
 
 지금까지의 과정을 그림으로 표현하면 아래와 같다. 
 
-![Untitled](./images/Untitled%202.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled%202.png)
 
 ### accept(), read()
 
@@ -1227,7 +1227,7 @@ if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
 `server socket fd`에 `EPOLLIN` 이벤트가 감지되었을 때의 과정을 그림으로 표현하면 아래와 같다. 
 
-![Untitled](./images/Untitled%203.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled%203.png)
 
 ### recv()
 
@@ -1456,11 +1456,11 @@ $11 = 76
 
 여기까지의 과정을 그림으로 표현하면 아래와 같다. 
 
-![Untitled](./images/Untitled%204.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled%204.png)
 
 ### 전체적인 프로세스
 
-![Untitled](./images/Untitled%205.png)
+![Untitled](./page/nginx_eventloop_architecture/images/Untitled%205.png)
 
 ### 요약
 
