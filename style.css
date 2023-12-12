@@ -50,6 +50,7 @@ body {
     margin: 0;
     font-family: 'Open Sans', sans-serif;
     cursor: default;
+    width:100%;
 }
 
 a {
@@ -70,6 +71,7 @@ h2 {
     display:flex;
     justify-content: space-between;
     background-color: var(--color-purple);
+    width:100%;
 }
 
 #navbar div{
@@ -118,7 +120,9 @@ h2 {
 }
 
 #main{
-    margin: 0px 48px 0px 48px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1200px;
 }
 
 
@@ -146,11 +150,21 @@ h2 {
 }
 
 #content{
-    margin: 12px 24px 56px 24px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1200px;
 }
 
 @media screen and (max-width: 768px) {
+    #main{
+        max-width: 748px;
+        margin:24px;
+    }
 
+    #content{
+        max-width: 748px;
+        margin:48px;
+    }
 }
 
 @media screen and (max-width: 512px) {
@@ -169,6 +183,16 @@ h2 {
     #navbar ul{
         flex-direction: column;
         padding:0px;
+    }
+
+    #content{
+        max-width: 500px;
+        margin:48px;
+    }
+
+    #main{
+        max-width: 500px;
+        margin:24px;
     }
 
     #main div a{
